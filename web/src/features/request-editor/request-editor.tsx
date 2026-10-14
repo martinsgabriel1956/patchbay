@@ -9,6 +9,7 @@ import { isCurl } from "@/lib/curl";
 import { effectiveAuth } from "@/lib/interpolate";
 import { isMac, modalOpen } from "@/lib/utils";
 import { AuthEditor, authName } from "./auth-editor";
+import { FilePicker } from "./file-picker";
 import { KvTable } from "./kv-table";
 import { activeTab, type BodyType, type Field, useRequest, where } from "./store";
 
@@ -183,25 +184,36 @@ export function RequestEditor() {
                 rows={withFiles(r.bodyFields)}
                 onChange={(rows) => set({ bodyFields: toFields(rows) })}
                 scope={scope}
+                files
               />
               <p className="text-[15px] text-mute">
-                Para enviar um arquivo, escreva{" "}
+                Para enviar um arquivo do workspace, use "Escolher…" ou escreva{" "}
                 <code className="font-mono text-[13px] text-ink">@caminho/no/workspace</code> no
                 valor.
               </p>
             </>
           )}
           {r.bodyType === "binary" && (
-            <label className="grid gap-2">
-              <span className="label text-[12px] text-mute">Arquivo (caminho no workspace)</span>
-              <input
-                spellCheck={false}
-                placeholder="pasta/arquivo.bin"
-                value={r.bodyFile}
-                onChange={(e) => set({ bodyFile: e.target.value })}
-                className="border border-line bg-bg px-2.5 py-1.5 font-mono text-[14px] outline-offset-[-2px] placeholder:text-mute"
-              />
-            </label>
+            <div className="grid gap-2">
+              <label htmlFor="body-file" className="label text-[12px] text-mute">
+                Arquivo (caminho no workspace)
+              </label>
+              <div className="flex border border-line">
+                <input
+                  id="body-file"
+                  spellCheck={false}
+                  placeholder="pasta/arquivo.bin"
+                  value={r.bodyFile}
+                  onChange={(e) => set({ bodyFile: e.target.value })}
+                  className="min-w-0 flex-1 bg-bg px-2.5 py-1.5 font-mono text-[14px] outline-offset-[-2px] placeholder:text-mute"
+                />
+                <FilePicker
+                  label="Escolher arquivo"
+                  onPick={(bodyFile) => set({ bodyFile })}
+                  className="label shrink-0 border-l border-line px-3.5 text-[14px] text-ink outline-offset-[-2px]"
+                />
+              </div>
+            </div>
           )}
           {r.bodyType === "graphql" && (
             <>
