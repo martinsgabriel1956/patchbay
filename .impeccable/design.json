@@ -1,0 +1,884 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T16:22:54+00:00",
+  "title": "Design System: Patchbay",
+  "extensions": {
+    "colorMeta": {
+      "matte": {
+        "role": "neutral",
+        "displayName": "Fosco",
+        "canonical": "oklch(15.9% 0.002 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Painel",
+        "canonical": "oklch(20.0% 0.002 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Fio",
+        "canonical": "oklch(28.4% 0.004 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252523",
+          "#424240",
+          "#61615f",
+          "#828280",
+          "#a5a5a3",
+          "#c9c9c7",
+          "#efefec"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "oklch(95.8% 0.007 97.4)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423e",
+          "#62615d",
+          "#83827e",
+          "#a6a5a0",
+          "#cac9c4",
+          "#efeeea"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Apoio",
+        "canonical": "oklch(64.6% 0.009 99.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423d",
+          "#62615c",
+          "#83827d",
+          "#a6a59f",
+          "#cac9c3",
+          "#f0efe8"
+        ]
+      },
+      "dim-on-paper": {
+        "role": "neutral",
+        "displayName": "Apoio em Papel",
+        "canonical": "oklch(47.0% 0.010 99.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423c",
+          "#62615b",
+          "#84827c",
+          "#a6a59f",
+          "#cac9c2",
+          "#f0efe8"
+        ]
+      },
+      "cord": {
+        "role": "primary",
+        "displayName": "Laranja de Cabo",
+        "canonical": "oklch(68.3% 0.210 38.0)",
+        "tonalRamp": [
+          "#1b0300",
+          "#461000",
+          "#752100",
+          "#a83402",
+          "#df4702",
+          "#fe774c",
+          "#feb59e",
+          "#fee9e3"
+        ]
+      },
+      "dev": {
+        "role": "secondary",
+        "displayName": "Verde Dev",
+        "canonical": "oklch(68.6% 0.146 151.8)",
+        "tonalRamp": [
+          "#001004",
+          "#002e13",
+          "#005025",
+          "#017539",
+          "#269a54",
+          "#52bf76",
+          "#79e499",
+          "#c7ffd4"
+        ]
+      },
+      "local": {
+        "role": "secondary",
+        "displayName": "Azul Local",
+        "canonical": "oklch(61.5% 0.185 270.4)",
+        "tonalRamp": [
+          "#040034",
+          "#110077",
+          "#232ca2",
+          "#3c51c8",
+          "#5a76ef",
+          "#839ffe",
+          "#b5c7ff",
+          "#e8eeff"
+        ]
+      },
+      "staging": {
+        "role": "secondary",
+        "displayName": "Âmbar Staging",
+        "canonical": "oklch(80.4% 0.156 82.5)",
+        "tonalRamp": [
+          "#120a00",
+          "#322201",
+          "#563d00",
+          "#7d5b05",
+          "#a67a05",
+          "#d29a04",
+          "#fbbe38",
+          "#ffeccb"
+        ]
+      },
+      "prod": {
+        "role": "secondary",
+        "displayName": "Vermelho Prod",
+        "canonical": "oklch(62.3% 0.196 29.0)",
+        "tonalRamp": [
+          "#1f0000",
+          "#4d0001",
+          "#800202",
+          "#b60e0a",
+          "#df4235",
+          "#fe7463",
+          "#feb3a8",
+          "#fee9e5"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Fundo",
+        "canonical": "oklch(15.9% 0.002 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superfície",
+        "canonical": "oklch(20.0% 0.002 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Fio (tema)",
+        "canonical": "oklch(28.4% 0.004 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252523",
+          "#424240",
+          "#61615f",
+          "#828280",
+          "#a5a5a3",
+          "#c9c9c7",
+          "#efefec"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta (tema)",
+        "canonical": "oklch(95.8% 0.007 97.4)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423e",
+          "#62615d",
+          "#83827e",
+          "#a6a5a0",
+          "#cac9c4",
+          "#efeeea"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Tinta 2",
+        "canonical": "oklch(88.1% 0.010 100.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423c",
+          "#62615b",
+          "#83827c",
+          "#a6a59f",
+          "#cac9c2",
+          "#f0efe8"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Tinta 3",
+        "canonical": "oklch(79.4% 0.011 100.9)",
+        "tonalRamp": [
+          "#0c0b06",
+          "#26251f",
+          "#43423c",
+          "#62615a",
+          "#84837b",
+          "#a6a59d",
+          "#cac9c1",
+          "#f0efe6"
+        ]
+      },
+      "mute": {
+        "role": "neutral",
+        "displayName": "Apoio (tema)",
+        "canonical": "oklch(64.6% 0.009 99.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423d",
+          "#62615c",
+          "#83827d",
+          "#a6a59f",
+          "#cac9c3",
+          "#f0efe8"
+        ]
+      },
+      "dev-text": {
+        "role": "secondary",
+        "displayName": "Texto Dev",
+        "canonical": "oklch(68.6% 0.146 151.8)",
+        "tonalRamp": [
+          "#001004",
+          "#002e13",
+          "#005025",
+          "#017539",
+          "#269a54",
+          "#52bf76",
+          "#79e499",
+          "#c7ffd4"
+        ]
+      },
+      "local-text": {
+        "role": "secondary",
+        "displayName": "Texto Local",
+        "canonical": "oklch(61.5% 0.185 270.4)",
+        "tonalRamp": [
+          "#040034",
+          "#110077",
+          "#232ca2",
+          "#3c51c8",
+          "#5a76ef",
+          "#839ffe",
+          "#b5c7ff",
+          "#e8eeff"
+        ]
+      },
+      "staging-text": {
+        "role": "secondary",
+        "displayName": "Texto Staging",
+        "canonical": "oklch(80.4% 0.156 82.5)",
+        "tonalRamp": [
+          "#120a00",
+          "#322201",
+          "#563d00",
+          "#7d5b05",
+          "#a67a05",
+          "#d29a04",
+          "#fbbe38",
+          "#ffeccb"
+        ]
+      },
+      "prod-text": {
+        "role": "secondary",
+        "displayName": "Texto Prod",
+        "canonical": "oklch(62.3% 0.196 29.0)",
+        "tonalRamp": [
+          "#1f0000",
+          "#4d0001",
+          "#800202",
+          "#b60e0a",
+          "#df4235",
+          "#fe7463",
+          "#feb3a8",
+          "#fee9e5"
+        ]
+      },
+      "cord-text": {
+        "role": "primary",
+        "displayName": "Texto Cabo",
+        "canonical": "oklch(68.3% 0.210 38.0)",
+        "tonalRamp": [
+          "#1b0300",
+          "#461000",
+          "#752100",
+          "#a83402",
+          "#df4702",
+          "#fe774c",
+          "#feb59e",
+          "#fee9e3"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Foco",
+        "canonical": "oklch(68.3% 0.210 38.0)",
+        "tonalRamp": [
+          "#1b0300",
+          "#461000",
+          "#752100",
+          "#a83402",
+          "#df4702",
+          "#fe774c",
+          "#feb59e",
+          "#fee9e3"
+        ]
+      },
+      "bg-light": {
+        "role": "neutral",
+        "displayName": "Fundo · claro",
+        "canonical": "oklch(95.8% 0.007 97.4)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423e",
+          "#62615d",
+          "#83827e",
+          "#a6a5a0",
+          "#cac9c4",
+          "#efeeea"
+        ]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Superfície · claro",
+        "canonical": "oklch(92.4% 0.009 100.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423d",
+          "#62615b",
+          "#83827c",
+          "#a6a59f",
+          "#cac9c2",
+          "#f0efe8"
+        ]
+      },
+      "line-light": {
+        "role": "neutral",
+        "displayName": "Fio (tema) · claro",
+        "canonical": "oklch(85.0% 0.011 100.9)",
+        "tonalRamp": [
+          "#0c0b06",
+          "#26251f",
+          "#43423c",
+          "#62615a",
+          "#84837b",
+          "#a6a59e",
+          "#cac9c1",
+          "#f0efe7"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Tinta (tema) · claro",
+        "canonical": "oklch(15.9% 0.002 106.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "ink-2-light": {
+        "role": "neutral",
+        "displayName": "Tinta 2 · claro",
+        "canonical": "oklch(28.8% 0.005 106.7)",
+        "tonalRamp": [
+          "#0b0b09",
+          "#252522",
+          "#42423f",
+          "#61615e",
+          "#82827f",
+          "#a5a5a1",
+          "#c9c9c5",
+          "#efefeb"
+        ]
+      },
+      "ink-3-light": {
+        "role": "neutral",
+        "displayName": "Tinta 3 · claro",
+        "canonical": "oklch(40.5% 0.008 97.5)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262521",
+          "#43423d",
+          "#62615c",
+          "#83827d",
+          "#a6a59f",
+          "#cac9c3",
+          "#f0efe8"
+        ]
+      },
+      "mute-light": {
+        "role": "neutral",
+        "displayName": "Apoio (tema) · claro",
+        "canonical": "oklch(50.6% 0.009 99.0)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#262520",
+          "#43423d",
+          "#62615b",
+          "#83827c",
+          "#a6a59f",
+          "#cac9c2",
+          "#f0efe8"
+        ]
+      },
+      "dev-text-light": {
+        "role": "secondary",
+        "displayName": "Texto Dev · claro",
+        "canonical": "oklch(51.3% 0.121 151.8)",
+        "tonalRamp": [
+          "#001004",
+          "#012e13",
+          "#025025",
+          "#16743c",
+          "#41975d",
+          "#66bb7e",
+          "#8ae0a2",
+          "#c7ffd4"
+        ]
+      },
+      "local-text-light": {
+        "role": "secondary",
+        "displayName": "Texto Local · claro",
+        "canonical": "oklch(50.9% 0.197 269.5)",
+        "tonalRamp": [
+          "#030034",
+          "#0f0176",
+          "#2029a8",
+          "#3850ce",
+          "#5574f6",
+          "#829ffe",
+          "#b4c7ff",
+          "#e8eefe"
+        ]
+      },
+      "staging-text-light": {
+        "role": "secondary",
+        "displayName": "Texto Staging · claro",
+        "canonical": "oklch(50.8% 0.108 73.3)",
+        "tonalRamp": [
+          "#130900",
+          "#352000",
+          "#5b3a01",
+          "#845602",
+          "#a9772e",
+          "#ce9a53",
+          "#f4be77",
+          "#ffebd3"
+        ]
+      },
+      "prod-text-light": {
+        "role": "secondary",
+        "displayName": "Texto Prod · claro",
+        "canonical": "oklch(52.1% 0.174 31.3)",
+        "tonalRamp": [
+          "#1e0000",
+          "#4b0500",
+          "#7e0e01",
+          "#ae2715",
+          "#d64f3b",
+          "#ff745d",
+          "#feb4a5",
+          "#fee9e5"
+        ]
+      },
+      "cord-text-light": {
+        "role": "primary",
+        "displayName": "Texto Cabo · claro",
+        "canonical": "oklch(53.5% 0.165 39.5)",
+        "tonalRamp": [
+          "#1b0300",
+          "#441200",
+          "#732401",
+          "#a63702",
+          "#d1572a",
+          "#f97b50",
+          "#feb59c",
+          "#fee9e2"
+        ]
+      },
+      "focus-light": {
+        "role": "primary",
+        "displayName": "Foco · claro",
+        "canonical": "oklch(53.5% 0.165 39.5)",
+        "tonalRamp": [
+          "#1b0300",
+          "#441200",
+          "#732401",
+          "#a63702",
+          "#d1572a",
+          "#f97b50",
+          "#feb59c",
+          "#fee9e2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Títulos de peça grandes; Archivo larga wdth 112."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos de seção; wdth 82, text-wrap balance."
+      },
+      "title-condensed": {
+        "displayName": "Title condensado",
+        "purpose": "Nome de canal em destaque; wdth 62 caixa alta."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "Parágrafo de abertura, até 62ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto de interface, ajuda, erros, descrições."
+      },
+      "title-sm": {
+        "displayName": "Title pequeno",
+        "purpose": "Títulos pequenos (h3) e notas de regra, 15px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Métodos, nomes de canal, abas, toggles; wdth 70 caixa alta."
+      },
+      "label-sm": {
+        "displayName": "Label pequeno",
+        "purpose": "Cabeçalhos de grupo, bloco vivo, seletor de tema."
+      },
+      "method-cell": {
+        "displayName": "Método na URL",
+        "purpose": "Célula de método da barra de URL."
+      },
+      "tape-label": {
+        "displayName": "Tape label",
+        "purpose": "Nome do environment na fita grande; wdth 125."
+      },
+      "tape-label-app": {
+        "displayName": "Tape label do app",
+        "purpose": "Nome do environment na fita de 36px do app."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Body, headers, metadados; 1.75 em blocos."
+      },
+      "data-md": {
+        "displayName": "Data médio",
+        "purpose": "URL e tabelas."
+      },
+      "data-sm": {
+        "displayName": "Data pequeno",
+        "purpose": "Log de frames."
+      },
+      "data-xs": {
+        "displayName": "Data mínimo",
+        "purpose": "kbd, códigos PB, histórico."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Timecode da régua."
+      },
+      "data-display": {
+        "displayName": "Data display",
+        "purpose": "Números de espécime."
+      },
+      "code-numeral": {
+        "displayName": "Numeral de código",
+        "purpose": "Amostras de cor de código."
+      },
+      "status-code-md": {
+        "displayName": "Status compacto",
+        "purpose": "Código de status em comparativos."
+      },
+      "status-code": {
+        "displayName": "Status code",
+        "purpose": "Código de status da resposta, cor da classe."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tab-active-rule",
+        "value": "inset 0 -2px var(--ink)",
+        "purpose": "Régua de 2px sob a aba ativa; sublinhado, não elevação."
+      },
+      {
+        "name": "selector-hover-rule",
+        "value": "inset 0 -2px var(--ink)",
+        "purpose": "Hover de botão não pressionado do seletor de tema. Junto com a aba ativa, as únicas box-shadow; nenhuma sombra de profundidade."
+      }
+    ],
+    "motion": [
+      {
+        "name": "frame-tick",
+        "value": "420ms step, sem easing",
+        "purpose": "Novo frame entra pela direita na faixa de frames enquanto a conexão está aberta. Desligado com prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "860px"
+      }
+    ],
+    "shapes": [
+      {
+        "name": "cut",
+        "value": "polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)",
+        "purpose": "Corte reto em cada ponta da fita de environment."
+      }
+    ],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--focus); outline-offset: 3px",
+        "purpose": "Foco de teclado global; --focus é #ff5b1f no escuro e #b8400a no claro."
+      }
+    ],
+    "themes": {
+      "default": "dark",
+      "preferences": [
+        "dark",
+        "light",
+        "system"
+      ],
+      "fallback": "dark",
+      "attribute": "data-theme on <html> (resolved), preference validated against dark|light|system",
+      "system": "prefers-color-scheme, live via matchMedia change",
+      "antiFlash": "inline <head> script applies data-theme before first paint",
+      "persistence": "localStorage da webview (app); Tauri window.setTheme segue o tema resolvido",
+      "assetSwap": ".on-dark / .on-light pairs for lockup, wordmark, wordmark-stacked; favicon e app-icon não trocam",
+      "colorScheme": {
+        "dark": "dark",
+        "light": "light"
+      },
+      "tokenSuffix": "frontmatter keys ending in -light are the [data-theme=light] values of the same semantic token"
+    },
+    "wordmark": {
+      "stroke": "3",
+      "glyphGrid": "12x20",
+      "advance": "18",
+      "cornerRadius": "3.5-4",
+      "source": "brand/wordmark.svg"
+    }
+  },
+  "components": [
+    {
+      "name": "Botão Enviar",
+      "kind": "button",
+      "refersTo": "button-send",
+      "description": "Único botão laranja: dispara a request (estado vivo).",
+      "html": "<button class=\"ds-send\">Enviar <span class=\"ds-send-k\">⌘↵</span></button>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-send{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 16px;background:var(--cord);color:var(--matte);font-size:16px;border:0;border-radius:0;cursor:pointer}.ds-send-k{font-family:var(--mono);font-size:12px;text-transform:none;letter-spacing:0;font-weight:500}.ds-send:focus-visible{outline:2px solid var(--focus);outline-offset:3px}.ds-send:active{background:var(--ink)}"
+    },
+    {
+      "name": "Barra de URL",
+      "kind": "input",
+      "refersTo": "url-bar",
+      "description": "Método monocromático, URL em mono com variável sublinhada tracejada, Enviar à direita.",
+      "html": "<div class=\"ds-url\"><div class=\"ds-url-m\">POST</div><input class=\"ds-url-u\" value=\"{{base}}/v1/users\" aria-label=\"URL\"><button class=\"ds-url-send\">Enviar</button></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-url{display:flex;height:44px;border:1px solid var(--line);background:var(--bg);width:560px;max-width:100%}.ds-url-m{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;width:84px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);color:var(--ink);font-size:17px}.ds-url-u{flex:1;min-width:0;background:transparent;border:0;color:var(--ink);font:14px var(--mono);padding:0 12px}.ds-url-u:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}.ds-url-send{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;background:var(--cord);color:var(--matte);border:0;padding:0 16px;font-size:16px}"
+    },
+    {
+      "name": "Fita de environment",
+      "kind": "custom",
+      "refersTo": "env-tape",
+      "description": "Faixa na cor do environment, corte reto em cada ponta, texto fosco.",
+      "html": "<div class=\"ds-tape\"><span class=\"ds-tape-n\">prod</span><span class=\"ds-tape-u\">api.loja.dev</span></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-tape{display:flex;align-items:center;gap:20px;height:52px;padding:0 22px;background:var(--prod);color:var(--matte);clip-path:var(--cut)}.ds-tape-n{font-family:var(--sans);font-variation-settings:'wdth' 125;font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:20px}.ds-tape-u{font:14px var(--mono)}"
+    },
+    {
+      "name": "Canal numerado",
+      "kind": "nav",
+      "refersTo": "channel-row",
+      "description": "Linha do trilho: número, método monocromático, nome em etiqueta; selecionado inverte.",
+      "html": "<div class=\"ds-rail\"><div class=\"ds-ch\" tabindex=\"0\"><span class=\"ds-n\">01</span><span>GET</span><span class=\"ds-lbl\">Listar usuários</span></div><div class=\"ds-ch ds-on\" tabindex=\"0\"><span class=\"ds-n\">02</span><span>POST</span><span class=\"ds-lbl\">Criar usuário</span></div><div class=\"ds-ch\" tabindex=\"0\"><span class=\"ds-n\">06</span><span class=\"ds-live\">WS</span><span class=\"ds-lbl\">Lances ao vivo</span></div></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-rail{width:270px;background:var(--bg);padding:8px 0}.ds-ch{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:grid;grid-template-columns:42px 40px 1fr;gap:10px;align-items:center;padding:6px 14px;font-size:13px;color:var(--ink)}.ds-n{font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:400;color:var(--mute);font-variant-numeric:tabular-nums}.ds-lbl{background:var(--ink);color:var(--matte);padding:2px 8px;justify-self:start}.ds-on{background:var(--ink);color:var(--bg)}.ds-on .ds-n{color:var(--bg)}.ds-on .ds-lbl{background:var(--bg);color:var(--ink)}.ds-live{color:var(--cord-text)}.ds-ch:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}"
+    },
+    {
+      "name": "Toggle Raw/Pretty",
+      "kind": "chip",
+      "refersTo": "toggle-raw-pretty",
+      "description": "Cru é um estado: dois segmentos visíveis, o ativo inverte.",
+      "html": "<div class=\"ds-tog\" role=\"group\"><button class=\"ds-on\" aria-pressed=\"true\">Pretty</button><button aria-pressed=\"false\">Raw</button></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-tog{display:inline-flex;border:1px solid var(--mute)}.ds-tog button{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:13px;padding:5px 14px;background:transparent;color:var(--ink);border:0;border-radius:0;cursor:pointer}.ds-tog .ds-on{background:var(--ink);color:var(--bg)}.ds-tog button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}"
+    },
+    {
+      "name": "Abas",
+      "kind": "nav",
+      "refersTo": "label",
+      "description": "Abas condensadas; a ativa em tinta com régua de 2px.",
+      "html": "<div class=\"ds-tabs\"><button>Params</button><button>Headers 3</button><button class=\"ds-on\">Body · JSON</button><button>Auth · Bearer</button></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-tabs{display:flex;gap:22px;border-bottom:1px solid var(--line)}.ds-tabs button{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:13px;padding:8px 0;background:none;border:0;color:var(--mute);cursor:pointer}.ds-tabs button:hover{color:var(--ink)}.ds-tabs .ds-on{color:var(--ink);box-shadow:inset 0 -2px var(--ink)}.ds-tabs button:focus-visible{outline:2px solid var(--focus);outline-offset:3px}"
+    },
+    {
+      "name": "Status da resposta",
+      "kind": "custom",
+      "refersTo": "status-code",
+      "description": "Código em mono 48px na cor da classe, frase condensada, metadados em mono.",
+      "html": "<div class=\"ds-st\"><span class=\"ds-code\">201</span><span class=\"ds-phrase\">Created</span></div><div class=\"ds-meta\"><span>tempo</span><b>142 ms</b><span>tamanho</span><b>1.24 KB</b><span>headers</span><b>9</b></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-st{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}.ds-code{font:600 48px/1 var(--mono);color:var(--dev-text);font-variant-numeric:tabular-nums}.ds-phrase{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:20px;color:var(--ink)}.ds-meta{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr;gap:4px 10px;font:13px var(--mono);margin-top:12px;font-variant-numeric:tabular-nums}.ds-meta span{color:var(--mute)}.ds-meta b{color:var(--ink);font-weight:500}"
+    },
+    {
+      "name": "Carimbo de cancelamento",
+      "kind": "chip",
+      "refersTo": "cancel-stamp",
+      "description": "Requests canceladas ficam no histórico, carimbadas em vermelho prod.",
+      "html": "<span class=\"ds-hist\">14:02 POST /v1/users</span><span class=\"ds-stamp\">timeout</span>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-hist{font:14px var(--mono);color:var(--ink)}.ds-stamp{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:inline-block;border:2px solid var(--prod-text);color:var(--prod-text);padding:1px 8px;font-size:13px;margin-left:10px}"
+    },
+    {
+      "name": "Bloco vivo",
+      "kind": "custom",
+      "refersTo": "live-lamp",
+      "description": "Conexão realtime aberta: lâmpada laranja e log de frames com timecode.",
+      "html": "<div class=\"ds-live\"><div class=\"ds-h\"><span class=\"ds-lamp\"></span>06 · Lances ao vivo · conectado</div><div class=\"ds-fr\"><span class=\"ds-t\">00:04:12:07</span><span class=\"ds-t\">in</span><span>{\"lot\":118,\"bid\":4300}</span></div><div class=\"ds-fr\"><span class=\"ds-t\">00:04:15:02</span><span class=\"ds-t\">out</span><span>{\"type\":\"ping\"}</span></div></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-live{border-top:1px solid var(--line);padding-top:12px;width:420px;max-width:100%}.ds-h{font-family:var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink);margin-bottom:6px}.ds-lamp{width:9px;height:9px;border-radius:50%;background:var(--cord)}.ds-fr{display:grid;grid-template-columns:104px 30px 1fr;gap:6px;font:12.5px var(--mono);padding:2px 0;color:var(--ink-2);font-variant-numeric:tabular-nums}.ds-t{color:var(--mute)}"
+    },
+    {
+      "name": "Seletor de tema",
+      "kind": "nav",
+      "refersTo": "theme-selector",
+      "description": "Escuro / Claro / Sistema; pressionado inverte, hover é régua inset de 2px.",
+      "html": "<div class=\"ds-theme\" role=\"group\" aria-label=\"Tema\"><button aria-pressed=\"true\">Escuro</button><button aria-pressed=\"false\">Claro</button><button aria-pressed=\"false\">Sistema</button></div>",
+      "css": ":host{--matte:#0d0d0c;--paper:#f2f1ec;--cord:#ff5b1f;--dev:#45b36b;--local:#5c78f2;--staging:#f0b429;--prod:#e5483a;--bg:#0d0d0c;--surface:#161615;--line:#2a2a28;--ink:#f2f1ec;--ink-2:#d9d8d1;--ink-3:#bdbcb4;--mute:#8f8e88;--dev-text:#45b36b;--cord-text:#ff5b1f;--prod-text:#e5483a;--staging-text:#f0b429;--focus:#ff5b1f;--cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);--mono:'Red Hat Mono',ui-monospace,monospace;--sans:'Archivo',system-ui,sans-serif;color-scheme:dark}:host-context([data-theme=light]){--bg:#f2f1ec;--surface:#e7e6df;--line:#cfcec6;--ink:#0d0d0c;--ink-2:#2b2b28;--ink-3:#4a4944;--mute:#66655f;--dev-text:#1f7a42;--cord-text:#b8400a;--prod-text:#b8321f;--staging-text:#8a5a00;--focus:#b8400a;color-scheme:light}.ds-theme{display:inline-flex;border:1px solid var(--mute)}.ds-theme button{all:unset;cursor:pointer;padding:0 14px;height:34px;display:flex;align-items:center;font:700 12px/1 var(--sans);font-variation-settings:'wdth' 70;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}.ds-theme button[aria-pressed=false]:hover{box-shadow:inset 0 -2px var(--ink)}.ds-theme button[aria-pressed=true]{background:var(--ink);color:var(--bg)}.ds-theme button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}@media (max-width:860px){.ds-theme button{height:44px}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Sessão de Estúdio Catalogada",
+    "overview": "**Creative North Star: \"A Sessão de Estúdio Catalogada\"**\n\nPatchbay é o painel onde se liga uma entrada a uma saída com um cabo, à mão. O sistema trata cada request como um canal numerado de uma mesa de som, cada sinal aparece cru em tinta sobre fundo chapado, e cada peça de identidade carrega um código de catálogo como uma capa de disco. O mundo é a fusão de três referências escolhidas pelo autor: a ficha de faixas de estúdio (canais, etiquetas, fita), a estética de dados crus (barras finas, timecode, algarismos tabulares) e o catálogo gráfico (códigos PB, régua de cores).\n\nA interface é de duas tintas. Cor só aparece quando quer dizer alguma coisa, e o código é fechado: quatro cores de fita para environment e classe de status, e um laranja de cabo para o que está vivo. Profundidade é feita com fios de 1px e inversão, nunca com sombra. A densidade é de ferramenta: linhas de 6–7px de respiro, colunas fixas, dado em mono tabular.\n\nO cenário é um único desenvolvedor ao lado de um editor escuro, em sessões longas, por isso o escuro (preto fosco, tinta branca) é o padrão. O claro é o mesmo mundo invertido, não outro: papel `#f2f1ec` de fundo, tinta fosca, seleção ainda por inversão, fitas, lâmpada e cabo com as mesmas cores. Uma terceira opção, Sistema, acompanha o SO ao vivo. Recusa confirmada: o shell cinza com acento violeta e badges de método coloridos da categoria; nada fofo, nada hacker clichê (preto com verde/neon), nada genérico.",
+    "keyCharacteristics": [
+      "Fosco e tinta em hairlines de 1px, um cinza de apoio; escuro por padrão, claro como inversão do mesmo mundo.",
+      "Cor é código: quatro fitas (dev/local/staging/prod = 2xx/3xx/4xx/5xx) e o laranja do cabo para estado vivo.",
+      "Métodos HTTP monocromáticos.",
+      "Seleção é inversão (fundo de tinta, texto na cor do fundo), nos dois temas.",
+      "Archivo variável muda de largura conforme o papel; Red Hat Mono tabular para todo dado.",
+      "Cantos retos; a única geometria própria é o corte reto em cada ponta da fita."
+    ],
+    "rules": [
+      {
+        "name": "The Color Is Code Rule",
+        "body": "Uma cor só entra na tela se carregar um dos cinco significados (environment, classe de status, vivo). Se der para apagar a cor sem perder informação, ela não devia estar lá.",
+        "section": "colors"
+      },
+      {
+        "name": "The Live Wire Rule",
+        "body": "O laranja do cabo marca o que está vivo e o foco do teclado. Nada mais: nem hover, nem destaque, nem erro.",
+        "section": "colors"
+      },
+      {
+        "name": "The Monochrome Method Rule",
+        "body": "GET, POST, PUT, PATCH, DEL ficam em tinta condensada. Método não é código de cor; a única exceção é um canal realtime (WS/SSE) conectado, que fica em `cord-text` porque está vivo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Same World Inverted Rule",
+        "body": "O claro troca só o par fundo/tinta e seus degraus. Fitas, lâmpada, Enviar e o cabo do logo mantêm os preenchimentos da marca; a seleção continua sendo inversão. Não existe acento, cinza ou cor nova só do claro.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fill Versus Text Rule",
+        "body": "Cor de código como preenchimento (fita, botão, lâmpada, chip) usa a cor da marca nos dois temas. Cor de código como texto ou borda de texto (status, carimbo, `WS`) usa a variante `*-text`, que no claro escurece para passar 4.5:1 sobre o papel. Na faixa de frames, as barras de staging usam `staging-text`, porque o âmbar cheio some no papel; as barras de cabo usam o preenchimento `cord`, que passa nos dois fundos.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-Only Panel Rule",
+        "body": "No claro, texto colorido nunca fica sobre a superfície `surface-light` (`dev-text` cai para 4.28:1 e `cord-text` para 4.44:1 ali). Texto colorido mora no fundo; a superfície mostra só tinta.",
+        "section": "colors"
+      },
+      {
+        "name": "The Width Is Role Rule",
+        "body": "Em Archivo, o papel escolhe a largura: larga (112–125) para títulos e fita, normal (100) para texto, condensada (62–82) para etiquetas e headlines. Não misture larguras dentro do mesmo papel.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Data Rule",
+        "body": "Todo número que pode mudar (status, ms, KB, timecode, índice de canal) é Red Hat Mono com `tabular-nums`, para que colunas não dancem.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Panel Rule",
+        "body": "Nada flutua. Se um elemento precisa se destacar, ele inverte ou ganha um fio; nunca ganha sombra. `box-shadow` só existe como régua inset de 2px em tinta.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Selection Is Inversion Rule",
+        "body": "O item ativo inverte para fundo de tinta com texto na cor do fundo, e sua etiqueta inverte de volta. Vale nos dois temas: no claro, a linha selecionada é preta. Nenhum azul de seleção, nenhum cinza de hover como estado. `::selection` de texto segue a mesma regra.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** manter a interface em fundo e tinta, com cor só para environment, classe de status e estado vivo.",
+      "**Do** usar o laranja de cabo para Enviar, request em voo, conexão aberta e anel de foco, e para nada mais.",
+      "**Do** marcar seleção por inversão (fundo de tinta, texto na cor do fundo), nos dois temas.",
+      "**Do** escrever todo número variável em Red Hat Mono tabular.",
+      "**Do** escolher a largura de Archivo pelo papel: 112–125 larga, 100 texto, 62–82 condensada em caixa alta para etiquetas.",
+      "**Do** cortar a fita com `--cut` (um corte reto de 10px em cada ponta) e pôr texto fosco sobre ela.",
+      "**Do** dividir colunas e listas com fios de 1px em vez de cards ou sombras.",
+      "**Do** manter Raw e Pretty lado a lado e visíveis em todo body.",
+      "**Do** guardar requests canceladas no histórico com o carimbo vermelho.",
+      "**Do** usar os SVGs de `brand/` para o nome, no par `on-dark` / `on-light` do tema; nunca recompor o wordmark em fonte.",
+      "**Do** usar os tokens semânticos (`--bg`, `--ink`, `--line`, `--mute`, `--*-text`, `--focus`) em toda interface, e as constantes de marca só para preenchimentos que não mudam com o tema.",
+      "**Do** usar a variante `*-text` sempre que uma cor de código vira texto ou borda de texto (e nas barras de staging da faixa de frames).",
+      "**Do** aplicar o tema antes do primeiro paint e manter Escuro como padrão e fallback."
+    ],
+    "donts": [
+      "**Don't** colorir métodos HTTP; só um canal realtime conectado fica laranja, por estar vivo.",
+      "**Don't** usar o laranja de cabo como hover, destaque decorativo ou indicação de erro.",
+      "**Don't** usar azul de seleção nem fundo cinza como estado ativo.",
+      "**Don't** usar sombra, brilho, blur ou contorno extra, nem na interface nem na marca; `box-shadow` só como régua inset de 2px.",
+      "**Don't** arredondar cantos de componentes; círculo só para lâmpada e jacks.",
+      "**Don't** construir o shell cinza com acento violeta, nem preto com verde/neon de terminal de filme.",
+      "**Don't** mudar a cor do cabo do logo; em fundo claro só os jacks e o wordmark viram tinta fosca.",
+      "**Don't** usar a régua de quatro chips sem um código PB ao lado.",
+      "**Don't** inventar cor, acento ou cinza só para o tema claro; ele é o mesmo mundo invertido.",
+      "**Don't** pôr texto colorido sobre a superfície clara (`surface-light`); só tinta ali."
+    ]
+  }
+}

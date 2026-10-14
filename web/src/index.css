@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource/red-hat-mono/400.css";
+@import "@fontsource/red-hat-mono/500.css";
+@import "@fontsource/red-hat-mono/600.css";
+@import "./styles/tokens.css";
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: "Archivo Variable", system-ui, sans-serif;
+  --font-mono: "Red Hat Mono", ui-monospace, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-mute: var(--mute);
+  --color-cord: var(--cord);
+  --color-matte: var(--matte);
+  --color-dim: var(--dim);
+  --color-dev: var(--dev);
+  --color-local: var(--local);
+  --color-staging: var(--staging);
+  --color-prod: var(--prod);
+  --color-dev-text: var(--dev-text);
+  --color-local-text: var(--local-text);
+  --color-staging-text: var(--staging-text);
+  --color-prod-text: var(--prod-text);
+  --color-cord-text: var(--cord-text);
+  --color-focus: var(--focus);
+
+  /* nomes do shadcn apontando para os tokens */
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-popover: var(--bg);
+  --color-popover-foreground: var(--ink);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--focus);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--mute);
+  --color-accent: var(--ink);
+  --color-accent-foreground: var(--bg);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    scrollbar-color: var(--line) var(--bg);
+  }
+  body {
+    font: 400 16px / 1.55 var(--font-sans);
+    font-variation-settings: "wdth" 100;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+}
+
+@utility label {
+  font-weight: 700;
+  font-size: 13px;
+  font-variation-settings: "wdth" 70;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@utility kbd {
+  border: 1px solid var(--line);
+  color: var(--mute);
+  font: 400 12px var(--font-mono);
+  padding: 2px 8px;
+}
+
+/* Par de logo por tema (DESIGN.md › Ativos). */
+[data-theme="light"] .on-dark,
+[data-theme="dark"] .on-light {
+  display: none;
+}

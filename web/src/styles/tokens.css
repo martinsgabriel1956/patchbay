@@ -1,0 +1,53 @@
+/* Tokens do DESIGN.md. Constantes de marca não mudam com o tema; os semânticos mudam. */
+:root {
+  --matte: #0d0d0c;
+  --panel: #161615;
+  --rule: #2a2a28;
+  --paper: #f2f1ec;
+  --dim: #8f8e88;
+  --cord: #ff5b1f;
+  --dev: #45b36b;
+  --local: #5c78f2;
+  --staging: #f0b429;
+  --prod: #e5483a;
+  --cut: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+/* Escuro é o padrão e o fallback (sem data-theme). */
+:root,
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --bg: #0d0d0c;
+  --surface: #161615;
+  --line: #2a2a28;
+  --ink: #f2f1ec;
+  --ink-2: #d9d8d1;
+  --ink-3: #bdbcb4;
+  --mute: #8f8e88;
+  --dev-text: #45b36b;
+  --local-text: #5c78f2;
+  --staging-text: #f0b429;
+  --prod-text: #e5483a;
+  --cord-text: #ff5b1f;
+  --focus: #ff5b1f;
+  color-scheme: dark;
+}
+
+/* Claro: o mesmo mundo invertido. */
+:root[data-theme="light"],
+[data-theme="light"] {
+  --bg: #f2f1ec;
+  --surface: #e7e6df;
+  --line: #cfcec6;
+  --ink: #0d0d0c;
+  --ink-2: #2b2b28;
+  --ink-3: #4a4944;
+  --mute: #66655f;
+  --dev-text: #1f7a42;
+  --local-text: #3c55d4;
+  --staging-text: #8a5a00;
+  --prod-text: #b8321f;
+  --cord-text: #b8400a;
+  --focus: #b8400a;
+  color-scheme: light;
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Patchbay",
+  "version": "0.1.0",
+  "identifier": "dev.patchbay.desktop",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../web/dist",
+    "beforeDevCommand": "npm run dev -w web",
+    "beforeBuildCommand": "npm run build -w web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Patchbay",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data:",
+        "font-src": "'self' data:",
+        "connect-src": "ipc: http://ipc.localhost http://127.0.0.1:*",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'"
+      },
+      "dangerousDisableAssetCspModification": ["style-src"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["appimage", "deb"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

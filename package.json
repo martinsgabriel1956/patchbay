@@ -1,0 +1,22 @@
+{
+  "name": "patchbay",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:web": "node scripts/dev-web.js",
+    "build": "npm run build -w api && tauri build --config desktop/tauri.bundle.json",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "npm test -w api && npm test -w web",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@tauri-apps/cli": "^2.12.2"
+  }
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#1e1f22;--p:#2b2d31;--rule:#3a3c42;--t:#e5e7eb;--d:#a8afba;--acc:#7c3aed}
+body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--t);font:13px/1.45 Inter,sans-serif;display:grid;grid-template-columns:56px 280px 1fr}
+.mono{font-family:"JetBrains Mono",monospace}
+.rail{background:#18191c;border-right:1px solid var(--rule);display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:16px}
+.rail i{width:24px;height:24px;border-radius:6px;background:#3a3c42}.rail i:first-child{background:var(--acc)}
+.side{background:var(--p);border-right:1px solid var(--rule);padding:14px}
+.search{height:32px;border-radius:6px;background:#1e1f22;border:1px solid var(--rule);margin-bottom:14px}
+.f{color:var(--d);font-weight:600;margin:12px 0 6px}
+.it{display:flex;gap:10px;padding:6px 8px;border-radius:6px}
+.it.on{background:#3a3c42}
+.g{color:#22c55e;font-weight:600;width:40px;font-size:11px}.po{color:#f59e0b;font-weight:600;width:40px;font-size:11px}.pu{color:#60a5fa;font-weight:600;width:40px;font-size:11px}.de{color:#f87171;font-weight:600;width:40px;font-size:11px}
+.main{display:grid;grid-template-rows:40px auto 1fr 1fr}
+.tabs{display:flex;background:#18191c;border-bottom:1px solid var(--rule)}
+.tab{padding:0 18px;display:flex;align-items:center;gap:8px;border-right:1px solid var(--rule);color:var(--d)}
+.tab.on{background:var(--bg);color:var(--t);box-shadow:inset 0 2px var(--acc)}
+.bar{display:flex;gap:8px;padding:14px 18px}
+.sel{width:100px;height:40px;border-radius:6px;background:var(--p);border:1px solid var(--rule);display:flex;align-items:center;padding:0 12px}
+.inp{flex:1;height:40px;border-radius:6px;background:var(--p);border:1px solid var(--rule);display:flex;align-items:center;padding:0 12px}
+.btn{width:110px;height:40px;border-radius:6px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px}
+.req,.res{padding:0 18px;border-top:1px solid var(--rule)}
+.sub{display:flex;gap:20px;padding:10px 0;color:var(--d)}.sub .on{color:var(--t);box-shadow:inset 0 -2px var(--acc)}
+pre{font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.7;color:#d1d5db}
+.st{display:flex;gap:16px;align-items:center;padding:10px 0}
+.ok{color:#22c55e;font-weight:600;font-size:24px}
+</style></head><body>
+<nav class="rail"><i></i><i></i><i></i><i></i></nav>
+<aside class="side"><div class="search"></div>
+  <div class="f">▾ Loja API</div>
+  <div class="it"><span class="g">GET</span>Listar usuários</div>
+  <div class="it on"><span class="po">POST</span>Criar usuário</div>
+  <div class="it"><span class="pu">PUT</span>Atualizar e-mail</div>
+  <div class="it"><span class="de">DEL</span>Remover usuário</div>
+  <div class="f">▸ Leilões</div>
+</aside>
+<main class="main">
+  <div class="tabs"><div class="tab on"><span class="po">POST</span>Criar usuário</div><div class="tab"><span class="g">GET</span>Listar usuários</div><div class="tab" style="margin-left:auto;border-left:1px solid var(--rule)">prod ▾</div></div>
+  <div class="bar"><div class="sel po">POST ▾</div><div class="inp mono">{{base}}/v1/users</div><div class="btn">Send</div></div>
+  <div class="req"><div class="sub"><span>Params</span><span>Headers (3)</span><span class="on">Body</span><span>Auth</span></div>
+<pre>{
+  "name": "Ana Ribeiro",
+  "email": "ana.ribeiro@exemplo.com",
+  "role": "bidder",
+  "creditLimit": 25000
+}</pre></div>
+  <div class="res"><div class="st"><span class="ok">201 Created</span><span style="color:var(--d)">142 ms · 1.24 KB</span></div>
+<pre>{
+  "id": "usr_9f2c41",
+  "name": "Ana Ribeiro",
+  "createdAt": "2026-10-14T14:03:11Z"
+}</pre></div>
+</main>
+</body></html>

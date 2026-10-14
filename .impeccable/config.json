@@ -1,0 +1,89 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-10-14T15:42:03.293Z",
+        "reason": "Claude: spent decision-round sketch (throwaway fixture), not shipped UI"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-10-14T15:42:03.315Z",
+        "reason": "Claude: spent decision-round sketch (throwaway fixture), not shipped UI"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-concourse.html"
+        ],
+        "createdAt": "2026-10-14T15:42:03.361Z",
+        "reason": "Claude: spent decision-round sketch (throwaway fixture), not shipped UI"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-14T15:42:03.389Z",
+        "reason": "Claude: spent decision-round sketch (throwaway fixture), not shipped UI"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "brand/index.html"
+        ],
+        "createdAt": "2026-10-14T15:47:10.210Z",
+        "reason": "Claude: flags only fixed-height flex-centered bars (label tape, URL bar, env tape) and the edge-to-edge specimen frame; finish reviewer did not list them as material"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-10-14T15:55:13.904Z",
+        "reason": "Claude: spent decision-round sketch predating DESIGN.md; alternate directions deliberately use other faces"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-10-14T15:55:14.044Z",
+        "reason": "Claude: spent decision-round sketch predating DESIGN.md; alternate directions deliberately use other faces"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-concourse.html"
+        ],
+        "createdAt": "2026-10-14T15:55:14.116Z",
+        "reason": "Claude: spent decision-round sketch predating DESIGN.md; alternate directions deliberately use other faces"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-14T15:55:14.187Z",
+        "reason": "Claude: spent decision-round sketch predating DESIGN.md; alternate directions deliberately use other faces"
+      }
+    ]
+  }
+}

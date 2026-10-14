@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Só os três comandos da ponte + tema da barra de título. Sem fs, sem shell.",
+  "windows": ["main"],
+  "permissions": [
+    "allow-api-info",
+    "allow-set-close-to-tray",
+    "allow-set-tray-status",
+    "core:window:allow-set-theme"
+  ]
+}

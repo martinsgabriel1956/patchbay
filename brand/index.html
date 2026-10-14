@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patchbay — Identidade</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>
+// Aplica o tema antes do primeiro paint (sem flash). Preferência: dark | light | system.
+(function () {
+  var pref = "dark";
+  try { pref = localStorage.getItem("pb-theme") || "dark"; } catch (e) {}
+  // ?theme=light|dark|system força um tema (útil para capturas e links).
+  pref = new URLSearchParams(location.search).get("theme") || pref;
+  if (!/^(dark|light|system)$/.test(pref)) pref = "dark";
+  var light = pref === "light" || (pref === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  document.documentElement.dataset.themePref = pref;
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* constantes da marca: não mudam com o tema */
+  --matte:#0d0d0c; --panel:#161615; --rule:#2a2a28; --paper:#f2f1ec; --dim:#8f8e88;
+  --cord:#ff5b1f;
+  --dev:#45b36b; --local:#5c78f2; --staging:#f0b429; --prod:#e5483a;
+  --gutter:clamp(16px,4vw,56px);
+  --cut:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);
+  --mono:"Red Hat Mono",ui-monospace,monospace;
+  --sans:"Archivo",system-ui,sans-serif;
+}
+/* tokens semânticos: escuro é o padrão; claro é o mesmo mundo invertido */
+:root,[data-theme="dark"]{
+  --bg:#0d0d0c; --surface:#161615; --line:#2a2a28;
+  --ink:#f2f1ec; --ink-2:#d9d8d1; --ink-3:#bdbcb4; --mute:#8f8e88;
+  --dev-text:#45b36b; --local-text:#5c78f2; --staging-text:#f0b429; --prod-text:#e5483a; --cord-text:#ff5b1f; --focus:#ff5b1f;
+  color-scheme:dark;
+}
+[data-theme="light"]{
+  --bg:#f2f1ec; --surface:#e7e6df; --line:#cfcec6;
+  --ink:#0d0d0c; --ink-2:#2b2b28; --ink-3:#4a4944; --mute:#66655f;
+  --dev-text:#1f7a42; --local-text:#3c55d4; --staging-text:#8a5a00; --prod-text:#b8321f; --cord-text:#b8400a; --focus:#b8400a;
+  color-scheme:light;
+}
+[data-theme="light"] .on-dark,[data-theme="dark"] .on-light,:root:not([data-theme]) .on-light{display:none}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);color:var(--ink);scrollbar-color:var(--line) var(--bg)}
+body{font:400 16px/1.55 var(--sans);font-variation-settings:"wdth" 100;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--bg)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+a{color:inherit;text-underline-offset:.2em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cond{font-variation-settings:"wdth" 70;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.dim{color:var(--mute)}
+img{display:block}
+
+/* top tape */
+.top{display:flex;align-items:center;gap:16px;padding:18px var(--gutter);border-bottom:1px solid var(--line)}
+.top .label{flex:1;display:flex;align-items:center;gap:20px;height:52px;padding:0 22px;background:var(--ink);color:var(--bg);clip-path:var(--cut)}
+.theme{display:inline-flex;border:1px solid var(--mute)}
+.theme button{all:unset;cursor:pointer;padding:0 14px;height:34px;display:flex;align-items:center;font:700 12px/1 var(--sans);font-variation-settings:"wdth" 70;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.theme button[aria-pressed="false"]:hover{box-shadow:inset 0 -2px var(--ink)}
+.theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.theme button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.top img{height:24px;width:auto}
+.top .cat{margin-left:auto;font-size:13px}
+.chips{display:inline-flex;gap:3px;vertical-align:middle}
+.chips i{width:10px;height:10px;display:block}
+.chips i:nth-child(1){background:var(--dev)}.chips i:nth-child(2){background:var(--local)}.chips i:nth-child(3){background:var(--staging)}.chips i:nth-child(4){background:var(--prod)}
+.pb{font-family:var(--mono);font-size:12px;color:var(--mute);display:inline-flex;align-items:center;gap:10px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr auto;align-items:end;gap:48px;padding:clamp(48px,9vw,120px) var(--gutter) 40px;border-bottom:1px solid var(--line)}
+.hero .word{width:min(100%,640px);height:auto}
+.hero .icon{width:clamp(140px,20vw,280px);height:auto}
+.hero p{grid-column:1/-1;max-width:62ch;font-size:clamp(17px,1.6vw,20px)}
+.band{grid-column:1/-1;border-top:1px solid var(--line);padding-top:18px}
+.band svg{width:100%;height:clamp(64px,9vw,120px);display:block}
+.tc{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:8px;font-variant-numeric:tabular-nums}
+.line{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 28px;font-size:13px;color:var(--mute);padding-top:20px;border-top:1px solid var(--line)}
+.line b{color:var(--ink);font-weight:500}
+
+section{padding:clamp(40px,5.5vw,72px) var(--gutter);border-bottom:1px solid var(--line)}
+h2{font-size:clamp(30px,4vw,52px);line-height:1.05;font-weight:700;font-variation-settings:"wdth" 82;letter-spacing:-.01em;margin-bottom:12px;text-wrap:balance}
+h2+.pb{margin-bottom:20px}
+h3{font-size:15px;margin:0 0 12px}
+.lede{max-width:64ch;color:var(--ink-2);margin-bottom:40px}
+
+/* name / anatomy */
+.anat{display:grid;grid-template-columns:minmax(0,420px) 1fr;gap:56px;align-items:center}
+.anat svg{width:100%;height:auto}
+.anat dl{display:grid;gap:22px}
+.anat dt{margin-bottom:4px}
+.anat dd{color:var(--ink-2);max-width:46ch}
+.key{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:10px;vertical-align:-1px}
+
+/* sizes */
+.grounds{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}
+.ground{display:flex;flex-wrap:wrap;align-items:flex-end;gap:28px;padding:32px;background:var(--matte);color:var(--paper)}
+.ground.light{background:var(--paper);color:var(--matte)}
+.ground figure{display:grid;gap:10px;justify-items:start}
+.ground figcaption{font-size:12px;color:var(--dim)}
+.ground.light figcaption{color:#5c5b55}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:32px}
+.rules p{font-size:15px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:12px}
+
+/* wordmark grid */
+.wm{position:relative;border:1px solid var(--line);padding:clamp(24px,5vw,56px);overflow:hidden}
+.wm svg{width:100%;height:auto;display:block}
+.lockups{display:grid;grid-template-columns:1fr 1fr;margin-top:24px;border:1px solid var(--line)}
+.lockups div{padding:36px;display:flex;align-items:center}
+.lockups div:first-child{background:var(--matte)}
+.lockups div:last-child{background:var(--paper)}
+.lockups img{height:40px;width:auto;max-width:100%}
+
+/* colour */
+.fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;border:1px solid var(--line)}
+.fields+h3,.fieldset h3{margin-top:28px}
+.field{min-height:180px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line)}
+.field:last-child{border-right:0}
+.field .n{font-size:13px}
+.field .hex{font-size:13px}
+.tapes{display:grid;gap:14px;margin-top:40px}
+.tape{display:grid;grid-template-columns:150px 1fr auto;align-items:center;gap:20px;height:52px;padding:0 22px;color:var(--matte);
+  clip-path:var(--cut)}
+.tape .cond{font-size:20px;font-variation-settings:"wdth" 125;letter-spacing:.12em}
+.tape .mono{font-size:14px}
+.cordrow{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;margin-top:40px;padding-top:28px;border-top:1px solid var(--line)}
+.cordrow .sw{width:120px;height:120px;border-radius:50%;background:var(--cord)}
+.cordrow p{max-width:60ch;color:var(--ink-2)}
+
+/* type */
+.type{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
+.type>div{background:var(--bg);padding:32px;display:grid;align-content:start;gap:14px}
+.spec-wide{font-size:clamp(40px,5.4vw,76px);line-height:1;font-weight:700;font-variation-settings:"wdth" 112;letter-spacing:-.02em}
+.spec-cond{font-size:clamp(28px,3.4vw,44px);line-height:1;font-variation-settings:"wdth" 62;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.spec-mono{font-family:var(--mono);font-size:clamp(28px,3.2vw,42px);line-height:1.05;font-weight:500;font-variant-numeric:tabular-nums}
+.tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px}
+.tbl td{padding:7px 0;border-bottom:1px solid var(--line)}
+.tbl td:last-child,.tbl td:nth-child(3){text-align:right}
+
+/* signatures */
+.sigs{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.sig{background:var(--bg);padding:28px;display:grid;gap:18px;align-content:start}
+.sig p{color:var(--ink-2);max-width:52ch}
+.demo{min-height:72px;display:flex;align-items:center}
+.ch{display:grid;grid-template-columns:32px 46px 1fr;gap:10px;align-items:center;padding:7px 10px;font-size:14px;width:100%}
+.ch .lbl{background:var(--ink);color:var(--bg);padding:2px 8px;justify-self:start}
+.ch.inv{background:var(--ink);color:var(--bg)}
+.ch.inv .lbl{background:var(--bg);color:var(--ink)}
+.stamp{display:inline-block;border:2px solid var(--prod-text);color:var(--prod-text);padding:1px 8px;font-size:13px;margin-left:10px}
+.dm{width:100%;height:72px}
+svg rect.i{fill:var(--ink)} svg rect.c{fill:var(--cord)} svg rect.s{fill:var(--staging-text)}
+.toggle{display:inline-flex;border:1px solid var(--mute)}
+.toggle span{padding:5px 14px;font-size:13px}
+.toggle .on{background:var(--ink);color:var(--bg)}
+
+/* duo: os dois temas lado a lado, forçados */
+.duo{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}
+.duo>div{background:var(--bg);color:var(--ink);padding:28px;display:grid;gap:14px;align-content:start}
+.duo .head{display:flex;align-items:baseline;justify-content:space-between}
+.duo .code{font-family:var(--mono);font-size:40px;font-weight:600;line-height:1}
+.duo .rows{display:grid;gap:2px}
+.duo .live2{display:flex;align-items:center;gap:10px;font-size:12px}
+.ink-rows{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.ink-rows div{background:var(--paper);padding:16px;display:grid;gap:8px;font-size:12px;color:#5c5b55}
+.ink-rows b{font:600 28px/1 var(--mono)}
+
+/* app specimen */
+.frame{border:1px solid var(--line);overflow:hidden}
+.app{width:100%;min-width:1240px;height:720px;display:grid;grid-template-rows:auto 1fr;background:var(--bg);color:var(--ink);font-size:14px}
+.app-top{display:flex;align-items:center;gap:18px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.app-top img{height:22px;width:auto}
+.app-tape{flex:1;height:36px;display:flex;align-items:center;gap:18px;padding:0 18px;background:var(--prod);color:var(--matte);
+  clip-path:var(--cut)}
+.app-tape .cond{font-size:19px}
+.kbd{border:1px solid var(--line);padding:2px 8px;color:var(--mute);font-size:12px}
+.app-body{display:grid;grid-template-columns:270px 1fr 450px;min-height:0}
+.rail{border-right:1px solid var(--line);padding:14px 0;overflow:hidden}
+.rail .h4{padding:0 14px 8px;font-size:12px;color:var(--mute)}
+.rail .ch{padding:6px 14px;font-size:13px;grid-template-columns:42px 40px 1fr}
+.rail .ch .lbl{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rail .n{color:var(--mute)}
+.rail .ch.inv .n{color:var(--bg)}
+.ed{border-right:1px solid var(--line);padding:16px 18px;min-width:0}
+.url{display:flex;height:44px;border:1px solid var(--line)}
+.url .m{width:84px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);font-size:17px}
+.url .u{flex:1;display:flex;align-items:center;padding:0 12px;font-size:14px;gap:1px}
+.var{border-bottom:1px dashed var(--ink);color:var(--ink);font-weight:600}
+.send{display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--cord);color:var(--matte);font-size:16px}
+.tabs{display:flex;gap:22px;margin-top:16px;border-bottom:1px solid var(--line);font-size:13px}
+.tabs span{padding:8px 0;color:var(--mute)}
+.tabs .on{color:var(--ink);box-shadow:inset 0 -2px var(--ink)}
+pre{font-family:var(--mono);font-size:13px;line-height:1.75;padding:14px 0;color:var(--ink-2);white-space:pre}
+.k{color:var(--ink);font-weight:500}.s{color:var(--ink-3)}.nu{color:var(--ink);font-weight:600}
+.res{padding:16px 18px;display:flex;flex-direction:column;min-width:0}
+.st{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.st .code{font-family:var(--mono);font-size:48px;line-height:1;font-weight:600;color:var(--dev-text)}
+.st .cond{font-size:20px}
+.st .toggle{margin-left:auto}
+.meta{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr;gap:4px 10px;font-size:13px;margin:12px 0 2px}
+.meta b{font-weight:500}
+.live{margin-top:auto;border-top:1px solid var(--line);padding-top:12px}
+.live .h4{display:flex;align-items:center;gap:10px;font-size:12px;margin-bottom:6px}
+.lamp{width:9px;height:9px;border-radius:50%;background:var(--cord)}
+.fr{display:grid;grid-template-columns:104px 30px 1fr;gap:6px;font-size:12.5px;padding:2px 0;color:var(--ink-2)}
+.fr .t{color:var(--mute)}
+
+footer{padding:40px var(--gutter);display:flex;flex-wrap:wrap;gap:12px 32px;font-size:13px;color:var(--mute)}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;gap:32px}
+  .hero .icon{width:120px;grid-row:1}
+  .anat,.type,.sigs,.grounds,.lockups,.duo{grid-template-columns:1fr}
+  .ink-rows{grid-template-columns:1fr 1fr}
+  .rules{grid-template-columns:1fr}
+  .fields{grid-template-columns:1fr 1fr}
+  .field{min-height:120px;border-bottom:1px solid var(--line)}
+  .field:first-child{grid-column:1/-1}
+  .tape{grid-template-columns:96px 1fr;height:auto;padding:12px 18px}
+  .tape .dim2{display:none}
+  .tape .cond{font-size:17px;font-variation-settings:"wdth" 66;letter-spacing:.06em}
+  .tape .mono{font-size:12.5px}
+  .cordrow{grid-template-columns:1fr}
+  .cordrow .sw{width:72px;height:72px}
+  .top{flex-wrap:wrap}
+  .top .label{flex-basis:100%}
+  .theme button{height:44px}
+  .fields .field:last-child{grid-column:1/-1}
+  .top .cat{display:none}
+  .tc span:not(:first-child):not(:last-child){display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="label"><img class="on-dark" src="lockup-light.svg" alt="Patchbay"><img class="on-light" src="lockup.svg" alt="Patchbay"><span class="cat mono"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>&nbsp; PB-001 · identidade</span></div>
+  <div class="theme" role="group" aria-label="Tema">
+    <button type="button" data-set="dark" aria-pressed="false">Escuro</button>
+    <button type="button" data-set="light" aria-pressed="false">Claro</button>
+    <button type="button" data-set="system" aria-pressed="false">Sistema</button>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <img class="word on-dark" src="wordmark-stacked.svg" alt="Patchbay" width="640" height="375"><img class="word on-light" src="wordmark-stacked-light.svg" alt="Patchbay" width="640" height="375">
+  <img class="icon" src="app-icon.svg" alt="Ícone do Patchbay" width="280" height="280">
+  <p>Client de API local-first para HTTP, WebSocket e SSE. As requests saem de um relay na sua máquina, as coleções são arquivos no disco, e o teclado alcança tudo.</p>
+  <div class="band" aria-hidden="true"><svg id="band" viewBox="0 0 1200 120" preserveAspectRatio="none"></svg><div class="tc mono"><span>00:00:00:00</span><span>00:00:15:00</span><span>00:00:30:00</span><span>00:00:45:00</span><span>00:01:00:00</span></div></div>
+  <div class="line mono"><span><b>PB-001 · Patchbay · v0.1</b></span><span>cli <b>patchbay</b></span><span>idiomas <b>en · pt-BR</b></span><span>mundo <b>sessão de estúdio catalogada</b></span></div>
+</div>
+
+<section aria-labelledby="h-nome">
+  <h2 id="h-nome">Uma entrada, uma saída, um cabo</h2>
+  <p class="lede">Patchbay é o painel de estúdio e de central telefônica onde se liga uma entrada a uma saída com um cabo, à mão. É o que o app faz com uma request: liga você a um endpoint, e o sinal volta cru. A marca é esse gesto, um patch entre dois jacks.</p>
+  <div class="anat">
+    <svg viewBox="0 0 220 220" role="img" aria-label="Anatomia da marca: dois jacks livres, dois plugues e o cabo">
+      <g style="stroke:var(--line)" stroke-width=".6">
+        <path d="M0 55H220M0 165H220M55 0V220M165 0V220"/>
+      </g>
+      <g style="stroke:var(--ink)" stroke-width="13.75" fill="none"><circle cx="158" cy="62" r="27.5"/><circle cx="62" cy="158" r="27.5"/></g>
+      <path d="M62 62C62 131 158 89 158 158" stroke="#ff5b1f" stroke-width="20.6" fill="none"/>
+      <circle cx="62" cy="62" r="32.3" fill="#ff5b1f"/><circle cx="158" cy="158" r="32.3" fill="#ff5b1f"/>
+    </svg>
+    <dl>
+      <div><dt class="cond"><span class="key" style="background:var(--cord)"></span>Plugues e cabo</dt><dd>A única cor viva da marca. No app, o mesmo laranja marca o que está em voo: a request enviando, a conexão aberta.</dd></div>
+      <div><dt class="cond"><span class="key" style="border:2px solid var(--ink)"></span>Jacks livres</dt><dd>Tinta em aro: branca no escuro, preta no claro. O que está disponível e ainda não foi ligado.</dd></div>
+      <div><dt class="cond"><span class="key" style="border:1px solid var(--mute)"></span>Grade</dt><dd>Desenhada num campo 32×32. Jacks e plugues têm o mesmo centro de grade; o cabo cai em curva, como cabo de verdade.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section aria-labelledby="h-marca">
+  <h2 id="h-marca">Marca e ícone</h2>
+  <p class="pb"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>PB-010 marca · PB-011 favicon · PB-012 ícone de app</p>
+  <p class="lede">O favicon carrega o próprio fundo preto, então funciona em aba clara e escura. O ícone de app estende o patch para um painel de duas fileiras.</p>
+  <div class="grounds">
+    <div class="ground">
+      <figure><img src="favicon.svg" width="16" height="16" alt=""><figcaption class="mono">16</figcaption></figure>
+      <figure><img src="favicon.svg" width="32" height="32" alt=""><figcaption class="mono">32</figcaption></figure>
+      <figure><img src="mark.svg" width="64" height="64" alt=""><figcaption class="mono">64</figcaption></figure>
+      <figure><img src="app-icon.svg" width="64" height="64" alt=""><figcaption class="mono">app 64</figcaption></figure>
+      <figure><img src="app-icon.svg" width="144" height="144" alt=""><figcaption class="mono">app 144</figcaption></figure>
+    </div>
+    <div class="ground light">
+      <figure><img src="favicon.svg" width="16" height="16" alt=""><figcaption class="mono">16</figcaption></figure>
+      <figure><img src="favicon.svg" width="32" height="32" alt=""><figcaption class="mono">32</figcaption></figure>
+      <figure><img src="mark-light.svg" width="64" height="64" alt=""><figcaption class="mono">64</figcaption></figure>
+      <figure><img src="mark-light.svg" width="144" height="144" alt=""><figcaption class="mono">144</figcaption></figure>
+    </div>
+  </div>
+  <div class="rules">
+    <p>Respiro mínimo em volta da marca: um jack inteiro, 1/4 da largura.</p>
+    <p>O cabo nunca muda de cor. Em fundo claro, só os jacks viram tinta preta.</p>
+    <p>Nada de sombra, brilho ou contorno extra. A marca é chapada.</p>
+  </div>
+</section>
+
+<section aria-labelledby="h-wm">
+  <h2 id="h-wm">Wordmark</h2>
+  <p class="pb"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>PB-020 wordmark · PB-021 empilhado · PB-022 lockup</p>
+  <p class="lede">Desenhado à mão como etiqueta gravada de mesa de som: traço único de 3 unidades sobre uma grade de 12×20, cantos de raio curto, caixa alta. Não é uma fonte; os arquivos são o desenho.</p>
+  <div class="wm" aria-hidden="true">
+    <svg viewBox="-6 -6 156 35">
+      <defs><pattern id="g" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M3 0H0V3" fill="none" style="stroke:var(--line)" stroke-width=".15"/></pattern></defs>
+      <rect x="-6" y="-6" width="156" height="35" fill="url(#g)"/>
+      <path d="M-6 1.5H150M-6 21.5H150M-6 11.5H150" style="stroke:var(--mute)" stroke-width=".18" stroke-dasharray="1 1"/>
+      <image class="on-dark" href="wordmark.svg" x="0" y="0" width="141" height="23"/><image class="on-light" href="wordmark-light.svg" x="0" y="0" width="141" height="23"/>
+    </svg>
+  </div>
+  <div class="lockups">
+    <div><img src="lockup.svg" alt="Patchbay, lockup para fundo escuro"></div>
+    <div><img src="lockup-light.svg" alt="Patchbay, lockup para fundo claro"></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-cor">
+  <h2 id="h-cor">Cor é código</h2>
+  <p class="pb"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>PB-100 a PB-118</p>
+  <p class="lede">O app é preto e branco. Cor só aparece quando quer dizer alguma coisa: o environment em que você está, a classe do status, o que está vivo. Métodos HTTP ficam na cor da tinta, sem cor própria, para não competir com quem carrega significado.</p>
+  <h3 class="cond">Tema escuro</h3>
+  <div class="fields">
+    <div class="field" style="background:var(--matte);color:var(--paper)"><span class="n cond">PB-100 · Fosco</span><span class="hex mono" style="color:var(--dim)">#0d0d0c · fundo</span></div>
+    <div class="field" style="background:var(--paper);color:var(--matte)"><span class="n cond">PB-101 · Tinta</span><span class="hex mono">#f2f1ec · texto, aros, inversão</span></div>
+    <div class="field" style="background:var(--panel);color:var(--paper)"><span class="n cond">PB-102 · Painel</span><span class="hex mono" style="color:var(--dim)">#161615 · #2a2a28 fios</span></div>
+    <div class="field" style="background:var(--matte);color:var(--dim)"><span class="n cond">PB-103 · Apoio</span><span class="hex mono">#8f8e88 · texto secundário</span></div>
+  </div>
+  <h3 class="cond">Tema claro</h3>
+  <div class="fields">
+    <div class="field" style="background:#f2f1ec;color:#0d0d0c;outline:1px solid #cfcec6;outline-offset:-1px"><span class="n cond">PB-110 · Papel</span><span class="hex mono" style="color:#66655f">#f2f1ec · fundo</span></div>
+    <div class="field" style="background:#0d0d0c;color:#f2f1ec"><span class="n cond">PB-111 · Tinta fosca</span><span class="hex mono">#0d0d0c · texto, aros, inversão</span></div>
+    <div class="field" style="background:#e7e6df;color:#0d0d0c"><span class="n cond">PB-112 · Painel claro</span><span class="hex mono" style="color:#66655f">#e7e6df · #cfcec6 fios</span></div>
+    <div class="field" style="background:#f2f1ec;color:#66655f;outline:1px solid #cfcec6;outline-offset:-1px"><span class="n cond">PB-113 · Apoio claro</span><span class="hex mono">#66655f · texto secundário</span></div>
+  </div>
+  <div class="tapes" role="list">
+    <div class="tape" role="listitem" style="background:var(--dev)"><span class="cond">dev</span><span class="mono">PB-104 · 2xx · sucesso</span><span class="mono dim2">#45b36b</span></div>
+    <div class="tape" role="listitem" style="background:var(--local)"><span class="cond">local</span><span class="mono">PB-105 · 3xx · redirect, info</span><span class="mono dim2">#5c78f2</span></div>
+    <div class="tape" role="listitem" style="background:var(--staging)"><span class="cond">staging</span><span class="mono">PB-106 · 4xx · erro do cliente</span><span class="mono dim2">#f0b429</span></div>
+    <div class="tape" role="listitem" style="background:var(--prod)"><span class="cond">prod</span><span class="mono">PB-107 · 5xx · erro do servidor</span><span class="mono dim2">#e5483a</span></div>
+  </div>
+  <div class="cordrow">
+    <div class="sw" aria-hidden="true"></div>
+    <div><h3 class="cond">PB-108 · Cabo · #ff5b1f</h3><p>Reservado ao que está vivo: o botão de enviar, a request em voo, a conexão WebSocket ou SSE aberta, o patch do logo. Nunca aparece como decoração e nunca indica erro.</p></div>
+  </div>
+  <div class="ink-rows" aria-label="Cor como texto no tema claro">
+    <div><span class="mono">PB-114 · dev</span><b style="color:#1f7a42">201</b><span class="mono">#1f7a42</span></div>
+    <div><span class="mono">PB-115 · local</span><b style="color:#3c55d4">304</b><span class="mono">#3c55d4</span></div>
+    <div><span class="mono">PB-116 · staging</span><b style="color:#8a5a00">404</b><span class="mono">#8a5a00</span></div>
+    <div><span class="mono">PB-117 · prod</span><b style="color:#b8321f">503</b><span class="mono">#b8321f</span></div>
+    <div><span class="mono">PB-118 · cabo</span><b style="color:#b8400a">WS</b><span class="mono">#b8400a</span></div>
+  </div>
+  <p class="lede" style="margin:16px 0 0">As fitas e o laranja mantêm o mesmo preenchimento nos dois temas. Quando a cor vira texto ou marca fina de dados sobre o papel (código de status, método vivo, carimbo, barras de frame), ela usa a versão escura acima para manter o contraste. Fitas, lâmpada e cabo mantêm o preenchimento.</p>
+</section>
+
+<section aria-labelledby="h-tipo">
+  <h2 id="h-tipo">Tipo</h2>
+  <p class="pb"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>PB-200 Archivo · PB-201 Red Hat Mono</p>
+  <p class="lede">Duas famílias. Archivo cobre a interface e muda de largura conforme o papel: larga para títulos, condensada em caixa alta para etiquetas de canal. Red Hat Mono cobre tudo que é dado: código, números, headers, timecode, sempre com algarismos tabulares.</p>
+  <div class="type">
+    <div>
+      <span class="mono dim" style="font-size:13px">Archivo · wdth 112 · 700</span>
+      <span class="spec-wide">Criar usuário</span>
+      <span class="mono dim" style="font-size:13px;margin-top:16px">Archivo · wdth 62 · 700 · caixa alta</span>
+      <span class="spec-cond">Lances ao vivo</span>
+      <p style="color:var(--ink-2);max-width:46ch;margin-top:10px">Archivo · wdth 100 · 400. Texto corrido de interface, mensagens de erro, ajuda e descrições de coleção.</p>
+    </div>
+    <div>
+      <span class="mono dim" style="font-size:13px">Red Hat Mono · 500 · tabular</span>
+      <span class="spec-mono">201 · 142 ms</span>
+      <table class="tbl" aria-label="Exemplo de dados tabulares">
+        <tr><td>14:03:11</td><td>POST</td><td>201</td><td>142 ms</td></tr>
+        <tr><td>14:02:47</td><td>GET</td><td>200</td><td>38 ms</td></tr>
+        <tr><td>14:02:05</td><td>DELETE</td><td>404</td><td>21 ms</td></tr>
+        <tr><td>14:01:52</td><td>POST</td><td>503</td><td>1 004 ms</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-sig">
+  <h2 id="h-sig">Assinaturas</h2>
+  <p class="lede">Seis regras que fazem o Patchbay ser reconhecível com todo o conteúdo apagado.</p>
+  <div class="sigs">
+    <div class="sig">
+      <h3 class="cond">Fita de environment</h3>
+      <div class="demo"><div class="tape" style="background:var(--prod);width:100%"><span class="cond">prod</span><span class="mono">api.loja.dev</span></div></div>
+      <p>Uma faixa de fita colorida no topo da janela diz em que environment você está. Vermelha é produção, sem ambiguidade.</p>
+    </div>
+    <div class="sig">
+      <h3 class="cond">Canais numerados</h3>
+      <div class="demo"><div class="ch"><span class="mono dim">06</span><span class="cond" style="font-size:13px">WS</span><span class="lbl cond" style="font-size:13px">Lances ao vivo</span></div></div>
+      <p>Toda request é um canal com número fixo e nome em etiqueta. O número é o índice: ⌘1 a ⌘9 pulam direto.</p>
+    </div>
+    <div class="sig">
+      <h3 class="cond">Seleção é inversão</h3>
+      <div class="demo"><div class="ch inv"><span class="mono">02</span><span class="cond" style="font-size:13px">POST</span><span class="lbl cond" style="font-size:13px">Criar usuário</span></div></div>
+      <p>O item ativo inverte: tinta vira fundo, fundo vira tinta. Nos dois temas. Nenhum azul de seleção, nenhum cinza de destaque.</p>
+    </div>
+    <div class="sig">
+      <h3 class="cond">Faixa de frames</h3>
+      <div class="demo"><svg class="dm" id="dm" viewBox="0 0 400 72" preserveAspectRatio="none" role="img" aria-label="Frames de WebSocket desenhados como barras finas"></svg></div>
+      <p>No realtime, cada frame vira uma barra fina: altura pelo tamanho, cor pelo código. Mostra o ritmo da conexão antes de você ler uma linha.</p>
+    </div>
+    <div class="sig">
+      <h3 class="cond">Nada some, tudo cancela</h3>
+      <div class="demo"><span class="mono" style="font-size:14px">14:02 POST /v1/users</span><span class="stamp cond">timeout</span></div>
+      <p>Requests abortadas, com timeout ou que falharam ficam no histórico, carimbadas com o que aconteceu.</p>
+    </div>
+    <div class="sig">
+      <h3 class="cond">Cru é um estado</h3>
+      <div class="demo"><span class="toggle cond"><span class="on">Pretty</span><span>Raw</span></span></div>
+      <p>Pretty e Raw ficam lado a lado em todo body. Ver o que veio de verdade nunca está escondido num menu.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-temas">
+  <h2 id="h-temas">Escuro, claro, sistema</h2>
+  <p class="pb"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>PB-300 escuro · PB-301 claro · PB-302 sistema</p>
+  <p class="lede">O escuro é o padrão. O claro é o mesmo mundo invertido, não outro: tinta preta sobre papel, a seleção continua sendo inversão, as fitas e o cabo não mudam. Sistema acompanha o sistema operacional ao vivo. A escolha fica nas Configurações e na command palette; use o seletor no topo desta página para ver tudo trocar.</p>
+  <div class="duo">
+    <div data-theme="dark">
+      <div class="head"><span class="cond">PB-300 · Escuro</span><span class="code" style="color:var(--dev-text)">201</span></div>
+      <div class="tape" style="background:var(--prod);height:40px"><span class="cond">prod</span><span class="mono">api.loja.dev</span></div>
+      <div class="rows">
+        <div class="ch"><span class="mono dim">01</span><span class="cond">GET</span><span class="lbl cond">Listar usuários</span></div>
+        <div class="ch inv"><span class="mono">02</span><span class="cond">POST</span><span class="lbl cond">Criar usuário</span></div>
+        <div class="ch"><span class="mono dim">06</span><span class="cond" style="color:var(--cord-text)">WS</span><span class="lbl cond">Lances ao vivo</span></div>
+      </div>
+      <div class="live2 cond"><span class="lamp"></span>conectado <span class="stamp" style="margin-left:auto">timeout</span></div>
+    </div>
+    <div data-theme="light">
+      <div class="head"><span class="cond">PB-301 · Claro</span><span class="code" style="color:var(--dev-text)">201</span></div>
+      <div class="tape" style="background:var(--prod);height:40px"><span class="cond">prod</span><span class="mono">api.loja.dev</span></div>
+      <div class="rows">
+        <div class="ch"><span class="mono dim">01</span><span class="cond">GET</span><span class="lbl cond">Listar usuários</span></div>
+        <div class="ch inv"><span class="mono">02</span><span class="cond">POST</span><span class="lbl cond">Criar usuário</span></div>
+        <div class="ch"><span class="mono dim">06</span><span class="cond" style="color:var(--cord-text)">WS</span><span class="lbl cond">Lances ao vivo</span></div>
+      </div>
+      <div class="live2 cond"><span class="lamp"></span>conectado <span class="stamp" style="margin-left:auto">timeout</span></div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-tela">
+  <h2 id="h-tela">Na tela</h2>
+  <p class="lede">A primeira tela da <span class="mono">web/</span> vestida no mundo, no tema escolhido no topo. Dados de exemplo.</p>
+  <div class="frame">
+    <div class="app" role="img" aria-label="Espécime da interface do Patchbay">
+      <div class="app-top">
+        <img class="on-dark" src="lockup.svg" alt=""><img class="on-light" src="lockup-light.svg" alt="">
+        <div class="app-tape"><span class="cond">prod</span><span class="mono">base = https://api.loja.dev</span><span class="mono">6 variáveis</span></div>
+        <span class="kbd mono">⌘K</span>
+      </div>
+      <div class="app-body">
+        <div class="rail">
+          <div class="h4 cond">Loja / usuários</div>
+          <div class="ch"><span class="n mono">01</span><span class="cond">GET</span><span class="lbl cond">Listar usuários</span></div>
+          <div class="ch inv"><span class="n mono">02</span><span class="cond">POST</span><span class="lbl cond">Criar usuário</span></div>
+          <div class="ch"><span class="n mono">03</span><span class="cond">PUT</span><span class="lbl cond">Atualizar e-mail</span></div>
+          <div class="ch"><span class="n mono">04</span><span class="cond">DEL</span><span class="lbl cond">Remover usuário</span></div>
+          <div class="h4 cond" style="margin-top:16px">Loja / leilões</div>
+          <div class="ch"><span class="n mono">05</span><span class="cond">GET</span><span class="lbl cond">Lotes abertos</span></div>
+          <div class="ch"><span class="n mono">06</span><span class="cond" style="color:var(--cord-text)">WS</span><span class="lbl cond">Lances ao vivo</span></div>
+          <div class="ch"><span class="n mono">07</span><span class="cond">SSE</span><span class="lbl cond">Notificações</span></div>
+          <div class="h4 cond" style="margin-top:16px">Histórico</div>
+          <div class="ch"><span class="n mono">14:02</span><span class="cond">POST</span><span class="mono dim" style="font-size:12px">/v1/users <span class="stamp cond" style="font-size:11px;margin-left:4px">timeout</span></span></div>
+          <div class="ch"><span class="n mono">13:58</span><span class="cond">GET</span><span class="mono dim" style="font-size:12px">/v1/users · 200</span></div>
+        </div>
+        <div class="ed">
+          <div class="url"><div class="m cond">POST</div><div class="u mono"><span class="var">{{base}}</span>/v1/users</div><div class="send cond">Enviar <span class="mono" style="font-size:12px;text-transform:none">⌘↵</span></div></div>
+          <div class="tabs cond"><span>Params</span><span>Headers 3</span><span class="on">Body · JSON</span><span>Auth · Bearer</span></div>
+<pre>{
+  <span class="k">"name"</span>: <span class="s">"Ana Ribeiro"</span>,
+  <span class="k">"email"</span>: <span class="s">"ana.ribeiro@exemplo.com"</span>,
+  <span class="k">"role"</span>: <span class="s">"bidder"</span>,
+  <span class="k">"creditLimit"</span>: <span class="nu">25000</span>,
+  <span class="k">"notify"</span>: { <span class="k">"email"</span>: <span class="nu">true</span>, <span class="k">"push"</span>: <span class="nu">false</span> }
+}</pre>
+        </div>
+        <div class="res">
+          <div class="st"><span class="code">201</span><span class="cond">Created</span><span class="toggle cond"><span class="on">Pretty</span><span>Raw</span></span></div>
+          <div class="meta mono"><span class="dim">tempo</span><b>142 ms</b><span class="dim">tamanho</span><b>1.24 KB</b><span class="dim">headers</span><b>9</b></div>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"usr_9f2c41"</span>,
+  <span class="k">"name"</span>: <span class="s">"Ana Ribeiro"</span>,
+  <span class="k">"createdAt"</span>: <span class="s">"2026-10-14T14:03:11Z"</span>
+}</pre>
+          <div class="live">
+            <div class="h4 cond"><span class="lamp"></span>06 · Lances ao vivo · conectado</div>
+            <svg class="dm" id="dm2" viewBox="0 0 400 40" preserveAspectRatio="none" style="height:40px;margin-bottom:8px" aria-hidden="true"></svg>
+            <div class="fr mono"><span class="t">00:04:12:07</span><span class="dim">in</span><span>{"lot":118,"bid":4300}</span></div>
+            <div class="fr mono"><span class="t">00:04:13:21</span><span class="dim">in</span><span>{"lot":118,"bid":4450}</span></div>
+            <div class="fr mono"><span class="t">00:04:15:02</span><span class="dim">out</span><span>{"type":"ping"}</span></div>
+            <div class="fr mono"><span class="t">00:04:15:03</span><span class="dim">in</span><span>{"type":"pong"}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="mono">
+  <span>Patchbay · PB-001</span>
+  <span>Arquivos em <a href="./">brand/</a>: mark, favicon, app-icon, wordmark, lockup (escuro e claro)</span>
+</footer>
+
+<script>
+// Faixa de frames: uma barra por frame, sequência fixa (seed) para ser reproduzível.
+(function () {
+  // Seletor de tema: grava a preferência e, em "sistema", acompanha o SO ao vivo.
+  const root = document.documentElement, mq = matchMedia("(prefers-color-scheme: light)");
+  const buttons = document.querySelectorAll(".theme button");
+  const apply = (pref) => {
+    root.dataset.themePref = pref;
+    root.dataset.theme = pref === "light" || (pref === "system" && mq.matches) ? "light" : "dark";
+    buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.set === pref)));
+  };
+  buttons.forEach((b) => b.addEventListener("click", () => {
+    try { localStorage.setItem("pb-theme", b.dataset.set); } catch (e) {}
+    apply(b.dataset.set);
+  }));
+  mq.addEventListener("change", () => { if (root.dataset.themePref === "system") apply("system"); });
+  apply(/^(dark|light|system)$/.test(root.dataset.themePref) ? root.dataset.themePref : "dark");
+
+  // Cores das barras por classe, para seguirem o tema: i = tinta, c = cabo, s = staging.
+  const colors = ["i", "i", "i", "c", "i", "s"];
+  let s = 7;
+  const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  function bars(svg, n, h, W = 400) {
+    const w = W / n;
+    let out = "";
+    for (let i = 0; i < n; i++) {
+      const bh = 6 + rand() * (h - 8);
+      out += `<rect x="${(i * w).toFixed(2)}" y="${(h - bh).toFixed(2)}" width="${Math.max(w * 0.38, 1).toFixed(2)}" height="${bh.toFixed(2)}" class="${colors[Math.floor(rand() * colors.length)]}"/>`;
+    }
+    svg.innerHTML = out;
+  }
+  // O espécime é desenhado a 1240px e reduzido para caber em telas estreitas.
+  const frame = document.querySelector(".frame"), app = document.querySelector(".app");
+  const fit = () => { const w = frame.clientWidth; app.style.zoom = w < 1240 ? (w / 1240).toFixed(4) : ""; };
+  fit(); addEventListener("resize", fit);
+  const a = document.getElementById("dm"), b = document.getElementById("dm2"), c = document.getElementById("band");
+  // Uma barra a cada ~4px renderizados: as barras finas continuam nítidas em qualquer largura.
+  const count = (svg, max) => Math.max(16, Math.min(max, Math.round(svg.getBoundingClientRect().width / 4)));
+  const draw = () => { bars(a, count(a, 64), 72); bars(b, 90, 40); bars(c, count(c, 220), 120, 1200); };
+  draw(); addEventListener("resize", draw);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Novos frames entram pela direita, como numa conexão aberta.
+  setInterval(() => {
+    for (const [svg, h, W] of [[a, 72, 400], [b, 40, 400], [c, 120, 1200]]) {
+      const rects = [...svg.children], w = W / rects.length;
+      const first = rects.shift(); first.remove();
+      rects.forEach((r, i) => r.setAttribute("x", (i * w).toFixed(2)));
+      const bh = 6 + rand() * (h - 8);
+      first.setAttribute("x", ((rects.length) * w).toFixed(2));
+      first.setAttribute("y", (h - bh).toFixed(2));
+      first.setAttribute("height", bh.toFixed(2));
+      first.setAttribute("class", colors[Math.floor(rand() * colors.length)]);
+      svg.appendChild(first);
+    }
+  }, 420);
+})();
+</script>
+</body>
+</html>

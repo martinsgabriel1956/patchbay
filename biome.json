@@ -1,0 +1,20 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.claude",
+      "!desktop/target",
+      "!desktop/gen",
+      "!brand",
+      "!web/public",
+      "!desktop/icons",
+      "!.impeccable"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "linter": { "rules": { "preset": "recommended" } }
+}

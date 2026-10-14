@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Archivo:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ground:#1b1c1a;--panel:#232421;--line:#33342f;--ink:#ecebe4;--dim:#a3a296;--tape:#d8c9a0;--sharpie:#151513;--red:#c0392b;--yellow:#e3b42a;--green:#3c9658;--blue:#3a6fcf;--live:#f26a1b}
+body{width:1440px;height:900px;overflow:hidden;background:var(--ground);color:var(--ink);font:14px/1.45 Archivo,sans-serif}
+.mono{font-family:"Red Hat Mono",monospace;font-variant-numeric:tabular-nums}
+.caps{font-family:"Archivo Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+/* env tape strip */
+.top{height:64px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line)}
+.mark{display:flex;align-items:center;gap:10px;font-family:"Archivo Narrow";font-weight:700;font-size:24px;letter-spacing:.06em}
+.mark svg{width:28px;height:28px}
+.tape{flex:1;height:40px;background:var(--red);display:flex;align-items:center;gap:18px;padding:0 22px;color:#fff;
+  clip-path:polygon(0 8%,1% 0,99% 4%,100% 0,100% 92%,99.2% 100%,0.8% 96%,0 100%)}
+.tape b{font-family:"Archivo Narrow";font-size:26px;letter-spacing:.08em}
+.tape span{}
+.kbd{border:1px solid var(--line);border-radius:4px;padding:2px 8px;color:var(--dim)}
+.wrap{display:grid;grid-template-columns:300px 1fr 520px;height:836px}
+/* channel rail */
+.rail{border-right:1px solid var(--line);padding:16px 0}
+.rail h3{padding:0 18px 10px;color:var(--dim);font-size:12px}
+.ch{display:grid;grid-template-columns:34px 52px 1fr;align-items:center;gap:8px;padding:7px 18px}
+.ch .n{color:var(--dim);font-size:15px}
+.ch .m{font-size:12px}
+.lbl{background:var(--tape);color:var(--sharpie);padding:3px 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch.on{background:var(--panel);box-shadow:inset 3px 0 var(--live)}
+.ch.on .n{color:var(--ink)}
+.get{color:var(--green)}.post{color:var(--yellow)}.del{color:#ef6a55}.ws{color:var(--live)}.put{color:#7fa6ea}
+/* editor */
+.ed{padding:18px 22px;border-right:1px solid var(--line)}
+.url{display:flex;height:48px;border:1px solid var(--line);background:var(--panel)}
+.url .m{width:96px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);font-size:18px}
+.url .u{flex:1;display:flex;align-items:center;padding:0 14px;font-size:15px}
+.var{background:#2f3b2a;color:#9fd18a;padding:0 4px}
+.send{width:120px;background:var(--live);color:#1b1c1a;display:flex;align-items:center;justify-content:center;font-size:18px}
+.tabs{display:flex;gap:26px;margin:20px 0 0;border-bottom:1px solid var(--line)}
+.tabs div{padding:8px 0;color:var(--dim)} .tabs .on{color:var(--ink);box-shadow:inset 0 -2px var(--ink)}
+pre{font-family:"Red Hat Mono",monospace;font-size:14px;line-height:1.7;padding:16px 0;color:#d5d3c8}
+.k{color:#9fbde8}.s{color:#d9c48a}.nu{color:#e39b6f}
+/* response */
+.res{padding:18px 22px;display:flex;flex-direction:column}
+.stat{display:flex;align-items:baseline;gap:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.code{font-size:56px;line-height:1;font-weight:600;color:var(--green)}
+.meta{display:grid;grid-template-columns:auto auto;gap:2px 14px;font-size:14px;color:var(--dim)}
+.meta b{color:var(--ink);font-weight:500;text-align:right}
+.toggle{margin-left:auto;display:flex;border:1px solid var(--line)}
+.toggle div{padding:4px 12px;font-size:12px}.toggle .on{background:var(--ink);color:var(--ground)}
+.log{margin-top:auto;border-top:1px solid var(--line);padding-top:12px}
+.log h4{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:8px}
+.lamp{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 0 3px #f26a1b33}
+.fr{display:grid;grid-template-columns:118px 18px 1fr;gap:8px;font-size:13px;padding:3px 0;color:#cfcdc2}
+.fr .t{color:var(--dim)}
+.void{border:1.5px solid #ef6a55;color:#ef6a55;padding:0 5px;font-size:11px;transform:rotate(-3deg);display:inline-block}
+</style></head><body>
+<div class="top">
+  <div class="mark"><svg viewBox="0 0 32 32"><circle cx="8" cy="9" r="3.5" fill="none" stroke="#ecebe4" stroke-width="2.4"/><circle cx="24" cy="23" r="3.5" fill="none" stroke="#ecebe4" stroke-width="2.4"/><path d="M8 12.5v4c0 4 4 6.5 8 6.5h4.5" fill="none" stroke="#f26a1b" stroke-width="2.4"/></svg>PATCHBAY</div>
+  <div class="tape"><b>PROD</b><span class="mono">base = https://api.loja.dev</span><span class="mono">· 6 variáveis</span></div>
+  <span class="kbd mono">⌘K</span>
+</div>
+<div class="wrap">
+  <aside class="rail">
+    <h3 class="caps">Loja / usuários</h3>
+    <div class="ch"><span class="n mono">01</span><span class="m caps get">GET</span><span class="lbl caps">listar usuários</span></div>
+    <div class="ch on"><span class="n mono">02</span><span class="m caps post">POST</span><span class="lbl caps">criar usuário</span></div>
+    <div class="ch"><span class="n mono">03</span><span class="m caps put">PUT</span><span class="lbl caps">atualizar e-mail</span></div>
+    <div class="ch"><span class="n mono">04</span><span class="m caps del">DEL</span><span class="lbl caps">remover usuário</span></div>
+    <h3 class="caps" style="margin-top:18px">Loja / leilões</h3>
+    <div class="ch"><span class="n mono">05</span><span class="m caps get">GET</span><span class="lbl caps">lotes abertos</span></div>
+    <div class="ch"><span class="n mono">06</span><span class="m caps ws">WS</span><span class="lbl caps">lances ao vivo</span></div>
+    <div class="ch"><span class="n mono">07</span><span class="m caps ws">SSE</span><span class="lbl caps">notificações</span></div>
+    <h3 class="caps" style="margin-top:18px">Histórico</h3>
+    <div class="ch"><span class="n mono">14:02</span><span class="m caps post">POST</span><span class="mono" style="color:var(--dim)">/v1/users <span class="void caps">timeout</span></span></div>
+    <div class="ch"><span class="n mono">13:58</span><span class="m caps get">GET</span><span class="mono" style="color:var(--dim)">/v1/users 200</span></div>
+  </aside>
+  <main class="ed">
+    <div class="url caps"><div class="m post">POST</div><div class="u mono" style="text-transform:none;letter-spacing:0;font-weight:400"><span class="var">{{base}}</span>/v1/users</div><div class="send">SEND ⌘↵</div></div>
+    <div class="tabs caps"><div>Params</div><div>Headers 3</div><div class="on">Body · JSON</div><div>Auth · Bearer</div></div>
+<pre>{
+  <span class="k">"name"</span>: <span class="s">"Ana Ribeiro"</span>,
+  <span class="k">"email"</span>: <span class="s">"ana.ribeiro@exemplo.com"</span>,
+  <span class="k">"role"</span>: <span class="s">"bidder"</span>,
+  <span class="k">"creditLimit"</span>: <span class="nu">25000</span>,
+  <span class="k">"notify"</span>: { <span class="k">"email"</span>: <span class="nu">true</span>, <span class="k">"push"</span>: <span class="nu">false</span> }
+}</pre>
+  </main>
+  <section class="res">
+    <div class="stat"><span class="code mono">201</span><span class="caps" style="font-size:22px">Created</span>
+      <div class="toggle caps"><div class="on">Pretty</div><div>Raw</div></div></div>
+    <div class="meta mono" style="margin:12px 0"><span>tempo</span><b>142 ms</b><span>tamanho</span><b>1.24 KB</b><span>headers</span><b>9</b></div>
+<pre style="padding-top:4px">{
+  <span class="k">"id"</span>: <span class="s">"usr_9f2c41"</span>,
+  <span class="k">"name"</span>: <span class="s">"Ana Ribeiro"</span>,
+  <span class="k">"createdAt"</span>: <span class="s">"2026-10-14T14:03:11Z"</span>
+}</pre>
+    <div class="log">
+      <h4 class="caps"><span class="lamp"></span>06 · lances ao vivo · conectado</h4>
+      <div class="fr mono"><span class="t">00:04:12:07</span><span class="ws">←</span><span>{"lot":118,"bid":4300,"user":"m.costa"}</span></div>
+      <div class="fr mono"><span class="t">00:04:13:21</span><span class="ws">←</span><span>{"lot":118,"bid":4450,"user":"ana.r"}</span></div>
+      <div class="fr mono"><span class="t">00:04:15:02</span><span style="color:var(--yellow)">→</span><span>{"type":"ping"}</span></div>
+      <div class="fr mono"><span class="t">00:04:15:03</span><span class="ws">←</span><span>{"type":"pong"}</span></div>
+    </div>
+  </section>
+</div>
+</body></html>
