@@ -56,7 +56,10 @@ export function RealtimeEditor() {
           {sse ? "SSE" : "WS"}
         </span>
         <VarInput
+          id="url"
           aria-label="URL"
+          // Aba nova (Ctrl T, palette, +) já abre digitando a URL.
+          autoFocus={!r.url}
           placeholder={
             sse
               ? "https://sse.dev/test  ou  {{baseUrl}}/events"
@@ -85,7 +88,7 @@ export function RealtimeEditor() {
         ) : (
           <button
             type="submit"
-            className="label flex shrink-0 items-center bg-cord px-4 text-[16px] text-matte"
+            className="label flex shrink-0 items-center bg-cord px-4 focus-visible:outline-matte focus-visible:outline-offset-[-4px] text-[16px] text-matte"
           >
             Conectar
           </button>

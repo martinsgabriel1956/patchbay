@@ -23,8 +23,11 @@ export const files = {
       body: text,
     }),
   mkdir: (path: string) => api(q(`${path}/`), { method: "PUT" }),
-  /** Vai para `.trash/` no workspace, não é apagado. */
-  remove: (path: string) => api(q(path), { method: "DELETE" }),
+  /** Vai para `.trash/` no workspace, não é apagado. Devolve o caminho na lixeira. */
+  remove: (path: string) =>
+    api(q(path), { method: "DELETE" })
+      .then((res) => res.json())
+      .then((r: { trashed: string }) => r.trashed),
   move: (from: string, to: string) => api("/files/move", post({ from, to })),
   copy: (from: string, to: string) => api("/files/copy", post({ from, to })),
 };
@@ -37,6 +40,12 @@ type Workspace = {
   error?: string;
   /** Diálogo de importar coleção (Postman/Insomnia) aberto. */
   importing?: boolean;
+  /** Pedido de salvar a aba ativa (Ctrl S, palette); a sidebar atende e pergunta o nome se faltar. */
+  saving?: boolean;
+  /** Operação de arquivo pedida de fora do trilho (command palette); a sidebar atende. */
+  op?: { kind: "rename" | "duplicate" | "delete" | "newCollection" | "newFolder"; path: string };
+  /** Último item deletado: `to` é onde ficou na lixeira, para o "Desfazer". */
+  trashed?: { from: string; to: string };
   load: () => Promise<void>;
   loadHistory: () => Promise<void>;
 };

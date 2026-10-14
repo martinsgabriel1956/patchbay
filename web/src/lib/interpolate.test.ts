@@ -6,6 +6,7 @@ import {
   parts,
   prepare,
   prepareRealtime,
+  unresolved,
   varsFrom,
 } from "./interpolate";
 
@@ -173,5 +174,13 @@ describe("prepareRealtime", () => {
       headers: [on("X-Id", "42"), on("Authorization", "Bearer t")],
       protocols: ["graphql-ws"],
     });
+  });
+});
+
+describe("unresolved", () => {
+  it("lista as {{var}} que sobraram depois de resolver, sem repetir", () => {
+    const req = { url: "{{baseUrl}}/x?q={{ q }}", headers: [{ key: "X", value: "{{baseUrl}}" }] };
+    expect(unresolved(req)).toEqual(["baseUrl", "q"]);
+    expect(unresolved({ url: "http://a/{{}}" })).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 // auth e headers herdados. Edita em memória; "Salvar" grava só os arquivos que mudaram.
 // Segredos vão para <coleção>/.env.local.json (gitignored), nunca para os arquivos versionados.
 import type { Auth, KV } from "@api/schemas";
-import { useEffect, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { AuthEditor } from "@/features/request-editor/auth-editor";
@@ -36,6 +36,8 @@ function invalid(names: string[]) {
 export function CollectionDialog() {
   const folder = useEnvironments((s) => s.editing);
   const [secrets, setSecrets] = useState<Secrets | null>(null);
+  // O Editor marca aqui se o rascunho mudou; Esc, clique fora e Cancelar perguntam antes.
+  const dirty = useRef(false);
 
   useEffect(() => {
     setSecrets(null);
@@ -45,16 +47,31 @@ export function CollectionDialog() {
   }, [folder]);
 
   if (!folder || !secrets) return null;
+  const close = () => {
+    if (dirty.current && !window.confirm("Descartar as alterações não salvas?")) return;
+    dirty.current = false;
+    useEnvironments.getState().edit(undefined);
+  };
   return (
-    <Dialog open onOpenChange={(open) => !open && useEnvironments.getState().edit(undefined)}>
+    <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)] gap-4 p-[18px] sm:max-w-3xl">
-        <Editor folder={folder} secrets={secrets} />
+        <Editor folder={folder} secrets={secrets} dirty={dirty} onCancel={close} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function Editor({ folder, secrets }: { folder: string; secrets: Secrets }) {
+function Editor({
+  folder,
+  secrets,
+  dirty,
+  onCancel,
+}: {
+  folder: string;
+  secrets: Secrets;
+  dirty: RefObject<boolean>;
+  onCancel: () => void;
+}) {
   const top = !folder.includes("/");
   const contents = useWorkspace((s) => s.contents);
   const colPath = `${folder}/collection.json`;
@@ -75,6 +92,9 @@ function Editor({ folder, secrets }: { folder: string; secrets: Secrets }) {
   const [auth, setAuth] = useState<Auth>(col.auth ?? { type: top ? "none" : "inherit" });
   const [error, setError] = useState("");
   const env = envs[selected];
+  const draft = json({ envs, vars, headers, auth });
+  const [initial] = useState(draft);
+  dirty.current = draft !== initial;
   const patchEnv = (patch: Partial<EnvDraft>) =>
     setEnvs(envs.map((e, i) => (i === selected ? { ...e, ...patch } : e)));
 
@@ -123,6 +143,7 @@ function Editor({ folder, secrets }: { folder: string; secrets: Secrets }) {
     if (active && !drafts.some((d) => d.name === active)) store.select(folder, kept?.name);
     useEnvironments.setState((s) => ({ secrets: { ...s.secrets, [folder]: local } }));
     await useWorkspace.getState().load();
+    dirty.current = false;
     store.edit(undefined);
   };
 
@@ -218,7 +239,8 @@ function Editor({ folder, secrets }: { folder: string; secrets: Secrets }) {
                       setEnvs(envs.filter((_, i) => i !== selected));
                       setSelected(Math.max(0, selected - 1));
                     }}
-                    className={button}
+                    // Destrutivo e só no rascunho: discreto, longe do Salvar.
+                    className="label w-fit px-0 py-1 text-[12px] text-mute underline decoration-dashed underline-offset-4 hover:text-ink"
                   >
                     Remover {env.name}
                   </button>
@@ -255,9 +277,14 @@ function Editor({ folder, secrets }: { folder: string; secrets: Secrets }) {
             {error}
           </p>
         )}
-        <button type="submit" className={button}>
-          Salvar
-        </button>
+        <div className="flex gap-2">
+          <button type="submit" className={button}>
+            Salvar
+          </button>
+          <button type="button" onClick={onCancel} className={button}>
+            Cancelar
+          </button>
+        </div>
       </form>
     </>
   );

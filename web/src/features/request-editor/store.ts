@@ -6,7 +6,7 @@ import { useRealtime } from "@/features/realtime/store";
 import { files, json, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
 import { parseCurl, toCurl } from "@/lib/curl";
-import { prepare } from "@/lib/interpolate";
+import { prepare, unresolved } from "@/lib/interpolate";
 import { paramsFromUrl, urlWithParams } from "./query";
 
 export type BodyType = Body["type"];
@@ -14,6 +14,8 @@ export type Field = KV & { file?: string };
 export type Result =
   | { state: "idle" }
   | { state: "sending" }
+  /** Não enviada: sobrou `{{var}}` sem valor. "Enviar mesmo assim" usa send(true). */
+  | { state: "blocked"; missing: string[] }
   | { state: "done"; response: HttpResponse }
   | { state: "failed"; reason: "cancelled" | "timeout" | "error"; message: string };
 
@@ -50,7 +52,8 @@ type RequestStore = {
   set: (patch: Partial<Draft>) => void;
   setUrl: (url: string) => void;
   setParams: (params: KV[]) => void;
-  send: () => Promise<void>;
+  /** force: envia mesmo com `{{var}}` sem valor. */
+  send: (force?: boolean) => Promise<void>;
   cancel: () => void;
   /** Comando curl → aba ativa (método, URL, headers, body, auth, opções); nome e arquivo ficam. */
   importCurl: (cmd: string) => void;
@@ -192,16 +195,28 @@ export const useRequest = create<RequestStore>()(
         setParams: (params) =>
           patch(current().key, { params, url: urlWithParams(current().url, params) }),
 
-        send: async () => {
+        send: async (force = false) => {
           const tab = current();
           if (tab.kind !== "http" || tab.result.state === "sending" || !tab.url.trim()) return;
+          // Variáveis e auth resolvidas aqui; o arquivo continua com os {{var}}.
+          let req: HttpRequest;
+          try {
+            const { scope, parents } = await requestContext(tab.path);
+            req = prepare(toRequest(tab), scope.vars, parents);
+          } catch (err) {
+            const message = (err as Error).message;
+            patch(tab.key, { result: { state: "failed", reason: "error", message } });
+            return;
+          }
+          const missing = unresolved(req);
+          if (missing.length && !force) {
+            patch(tab.key, { result: { state: "blocked", missing } });
+            return;
+          }
           const controller = new AbortController();
           inflight.set(tab.key, controller);
           patch(tab.key, { result: { state: "sending" } });
           try {
-            // Variáveis e auth resolvidas aqui; o arquivo continua com os {{var}}.
-            const { scope, parents } = await requestContext(tab.path);
-            const req = prepare(toRequest(tab), scope.vars, parents);
             // Sem esquema, assume http:// (como o curl).
             if (!/^[a-z][\w+.-]*:\/\//i.test(req.url)) req.url = `http://${req.url}`;
             const res = await api("/send", {

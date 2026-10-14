@@ -100,7 +100,8 @@ export const exists = (abs: string) =>
     () => false,
   );
 
-/** "Deletar" = mover para `.trash/<mesmo caminho>`; colisão vira `nome 2.json`, `nome 3.json`… */
+/** "Deletar" = mover para `.trash/<mesmo caminho>`; colisão vira `nome 2.json`, `nome 3.json`…
+ *  Devolve o caminho relativo na lixeira (o "Desfazer" move de volta). */
 export async function trash(rel: string) {
   const abs = await resolve(rel);
   const inTrash = path.join(".trash", path.relative(await root(), abs));
@@ -109,6 +110,7 @@ export async function trash(rel: string) {
   for (let n = 2; await exists(dest); n++) dest = path.join(dir, `${name} ${n}${ext}`);
   await mkdir(dir, { recursive: true });
   await rename(abs, dest);
+  return path.relative(await root(), dest);
 }
 
 export async function appendHistory(entry: HistoryEntry) {

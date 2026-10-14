@@ -1,9 +1,13 @@
 import type { HttpResponse } from "@api/schemas";
 import { Fragment, useMemo, useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
+import { ShortcutList } from "@/components/shortcuts";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
+import { useCurrentEnvironments } from "@/features/environments/env-bar";
+import { useEnvironments } from "@/features/environments/store";
 import { activeTab, useRequest } from "@/features/request-editor/store";
-import { isMac } from "@/lib/utils";
+import { focusUrl, isMac, mod } from "@/lib/utils";
+import { diagnose, STAMPS } from "./diagnose";
 
 // Classe de status = cor da fita (DESIGN.md › Secondary), sempre na variante *-text.
 const TONES: Record<number, string> = {
@@ -12,7 +16,44 @@ const TONES: Record<number, string> = {
   4: "text-staging-text",
   5: "text-prod-text",
 };
-const STAMPS = { cancelled: "Cancelada", timeout: "Tempo esgotado", error: "Falhou" };
+const button =
+  "label h-[34px] border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]";
+
+/** Botão de ação com o atalho ao lado, em mono. */
+function Action(props: { onClick: () => void; children: string; keys?: string }) {
+  return (
+    <button type="button" onClick={props.onClick} className={button}>
+      {props.children}
+      {props.keys && (
+        <span className="ml-1.5 font-mono font-normal tracking-normal text-mute normal-case">
+          {props.keys}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Variável sem valor: escolher outro environment (foco no seletor) ou editar os da coleção. */
+function EnvActions() {
+  const { collection, envs } = useCurrentEnvironments();
+  if (!collection) return null;
+  return (
+    <>
+      {envs.length > 0 && (
+        <Action
+          onClick={() =>
+            document.querySelector<HTMLElement>("#env-select [aria-pressed=true]")?.focus()
+          }
+        >
+          Escolher environment
+        </Action>
+      )}
+      <Action onClick={() => useEnvironments.getState().edit(collection)}>
+        Editar environments
+      </Action>
+    </>
+  );
+}
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 const bytes = (n: number) =>
@@ -24,13 +65,21 @@ const bytes = (n: number) =>
 
 export function ResponseViewer() {
   const result = useRequest((s) => activeTab(s).result);
+  const url = useRequest((s) => activeTab(s).url);
   const cancel = useRequest((s) => s.cancel);
+  const send = useRequest((s) => s.send);
 
   if (result.state === "idle") {
     return (
-      <p className="p-[18px] text-[15px] text-mute">
-        Nenhuma resposta ainda. Monte a request e envie com {isMac ? "⌘↵" : "Ctrl ↵"}.
-      </p>
+      <div className="grid content-start gap-4 overflow-y-auto p-[18px]">
+        <p className="text-[15px] text-mute">
+          Nenhuma resposta ainda. Monte a request e envie com {isMac ? "⌘↵" : "Ctrl ↵"}.
+        </p>
+        <section aria-label="Atalhos" className="grid gap-2.5">
+          <h2 className="label text-[12px] text-mute">Atalhos</h2>
+          <ShortcutList />
+        </section>
+      </div>
     );
   }
   if (result.state === "sending") {
@@ -38,23 +87,54 @@ export function ResponseViewer() {
       <div className="flex items-center gap-2.5 p-[18px]" role="status">
         <span className="size-[9px] rounded-full bg-cord" />
         <span className="label text-cord-text">Em voo</span>
-        <button
-          type="button"
-          onClick={cancel}
-          className="label ml-auto h-[34px] border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]"
-        >
+        <button type="button" onClick={cancel} className={`${button} ml-auto`}>
           Cancelar
         </button>
       </div>
     );
   }
+  if (result.state === "blocked") {
+    const names = result.missing.map((name) => `{{${name}}}`).join(", ");
+    return (
+      <div className="grid gap-3.5 p-[18px]" role="alert">
+        <span className="label w-fit border-2 border-prod-text px-2 py-px text-prod-text">
+          Não enviada
+        </span>
+        <p className="max-w-[64ch] text-[15px] text-ink">
+          {result.missing.length === 1 ? "A variável " : "As variáveis "}
+          <code className="font-mono text-[14px] text-prod-text">{names}</code>
+          {result.missing.length === 1 ? " não tem valor" : " não têm valor"} no environment ativo.
+          Escolha outro environment, defina o valor ou envie assim mesmo.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <EnvActions />
+          <Action onClick={() => send(true)} keys={mod("Shift ↵")}>
+            Enviar mesmo assim
+          </Action>
+        </div>
+      </div>
+    );
+  }
   if (result.state === "failed") {
+    const diagnosis = diagnose(result.reason, result.message, url);
     return (
       <div className="grid gap-3.5 p-[18px]" role="alert">
         <span className="label w-fit border-2 border-prod-text px-2 py-px text-prod-text">
           {STAMPS[result.reason]}
         </span>
+        {diagnosis && <p className="max-w-[64ch] text-[15px] text-ink">{diagnosis.hint}</p>}
         <p className="font-mono text-[13px] break-words text-ink-2">{result.message}</p>
+        <div className="flex flex-wrap gap-2">
+          {diagnosis?.fix === "url" && (
+            <Action onClick={focusUrl} keys={mod("L")}>
+              Corrigir URL
+            </Action>
+          )}
+          {diagnosis?.fix === "env" && <EnvActions />}
+          <Action onClick={() => send()} keys={mod("↵")}>
+            Tentar de novo
+          </Action>
+        </div>
       </div>
     );
   }

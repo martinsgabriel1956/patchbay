@@ -66,6 +66,59 @@ export function RealtimePanel() {
   );
 }
 
+// Faixa de frames (DESIGN.md › assinatura): uma barra fina por frame, a mais nova à direita.
+// Altura pelo tamanho (escala log até 64 KB), cor pelo código: in em tinta, out no cabo, erro em
+// staging-text. Sem animação própria: a barra nova só aparece quando o frame chega.
+const SLOTS = 120;
+const SLOT = 4;
+const STRIP_H = 36;
+const FILL = { in: "fill-ink", out: "fill-cord", err: "fill-staging-text" };
+
+function FrameStrip({ entries }: { entries: Entry[] }) {
+  const frames = entries
+    .filter((e) => e.dir !== "event" || e.kind === "error")
+    .slice(-SLOTS)
+    .map((e) => ({
+      id: e.id,
+      tone: e.dir === "event" ? ("err" as const) : e.dir,
+      size: e.binary ? Math.floor((e.data.length * 3) / 4) : e.data.length,
+    }));
+  if (frames.length === 0) return null;
+  const count = (tone: keyof typeof FILL) => frames.filter((f) => f.tone === tone).length;
+  return (
+    <svg
+      role="img"
+      aria-label={`Últimos ${frames.length} frames: ${count("in")} recebidos, ${count("out")} enviados, ${count("err")} erros`}
+      viewBox={`0 0 ${SLOTS * SLOT} ${STRIP_H}`}
+      preserveAspectRatio="none"
+      className="block h-9 w-full shrink-0"
+    >
+      {frames.map((f, i) => {
+        const h = 3 + (STRIP_H - 4) * Math.min(1, Math.log2(f.size + 1) / 16);
+        return (
+          <rect
+            key={f.id}
+            x={(SLOTS - frames.length + i) * SLOT}
+            y={STRIP_H - h}
+            width={SLOT * 0.38}
+            height={h}
+            className={FILL[f.tone]}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Timecode desde a última abertura da conexão: `HH:MM:SS:cc` (cc = centésimos). */
+export function timecode(ms: number) {
+  const t = Math.max(0, Math.floor(ms / 10));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return [Math.floor(t / 360000), Math.floor(t / 6000) % 60, Math.floor(t / 100) % 60, t % 100]
+    .map(pad)
+    .join(":");
+}
+
 /** Log de frames, mais novo no topo. Filtro por texto e Limpar. */
 export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: () => void }) {
   const [filter, setFilter] = useState("");
@@ -74,9 +127,25 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
     const list = q ? entries.filter((e) => e.data.toLowerCase().includes(q)) : entries;
     return list.slice().reverse();
   }, [entries, filter]);
+  // Cada linha conta a partir do "open" mais recente antes dela (reconectar zera o relógio).
+  const codes = useMemo(() => {
+    const out = new Map<number, string>();
+    let base = 0;
+    for (const e of entries) {
+      const at = Date.parse(e.at);
+      if (e.kind === "open" || !base) base = at;
+      out.set(e.id, timecode(at - base));
+    }
+    return out;
+  }, [entries]);
 
   return (
     <>
+      {entries.length > 0 && (
+        <div className="shrink-0 border-b border-line px-[18px] pt-2.5 pb-1.5">
+          <FrameStrip entries={entries} />
+        </div>
+      )}
       <div className="flex shrink-0 items-center gap-2 border-b border-line px-[18px] py-2">
         <input
           type="search"
@@ -103,7 +172,7 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
       ) : (
         <ol aria-label="Mensagens" className="min-h-0 flex-1 overflow-y-auto py-1.5">
           {shown.map((entry) => (
-            <Row key={entry.id} entry={entry} />
+            <Row key={entry.id} entry={entry} code={codes.get(entry.id) ?? ""} />
           ))}
         </ol>
       )}
@@ -111,7 +180,7 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
   );
 }
 
-const time = (at: string) =>
+const clock = (at: string) =>
   new Date(at).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -129,12 +198,14 @@ function pretty(data: string) {
 }
 
 // memo: linhas não mudam depois de criadas; só as novas renderizam (e só elas parseiam JSON).
-const Row = memo(function Row({ entry }: { entry: Entry }) {
+const Row = memo(function Row({ entry, code }: { entry: Entry; code: string }) {
   const event = entry.dir === "event";
   const tone = entry.kind === "error" ? "text-prod-text" : event ? "text-mute" : "text-ink-2";
   return (
     <li className="grid grid-cols-[auto_28px_minmax(0,1fr)] gap-x-2.5 px-[18px] py-1 font-mono text-[12.5px] leading-[1.6]">
-      <span className="text-[12px] text-mute tabular-nums">{time(entry.at)}</span>
+      <span className="text-[12px] text-mute tabular-nums" title={clock(entry.at)}>
+        {code}
+      </span>
       <span className="text-mute">
         {event ? (entry.kind === "error" ? "err" : "·") : entry.dir}
       </span>

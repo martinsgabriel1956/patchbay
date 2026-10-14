@@ -12,6 +12,8 @@ import {
   serialize,
   useRequest,
 } from "@/features/request-editor/store";
+import { STAMPS } from "@/features/response-viewer/diagnose";
+import { mod } from "@/lib/utils";
 import { ImportDialog } from "./import-dialog";
 import { PathDialog, type PathDialogProps } from "./path-dialog";
 import { files, json, useWorkspace } from "./store";
@@ -32,10 +34,36 @@ function groups(entries: TreeEntry[], path = "", out: Group[] = []): Group[] {
   return out;
 }
 
+/** Requests na ordem do trilho: o canal n é o item n-1 (Ctrl 1–9, palette). */
+export const channels = (tree: TreeEntry[]) => groups(tree).flatMap((g) => g.requests);
+
+/** Abre o arquivo da request numa aba (ou foca a aba que já o tem). */
+export function openChannel(path: string) {
+  const content = useWorkspace.getState().contents[path];
+  if (!content) return fail(new Error(`JSON inválido em ${path}: corrija o arquivo à mão.`));
+  useRequest.getState().open(fromRequest(content), path);
+}
+
 const join = (folder: string, name: string) => (folder ? `${folder}/${name}` : name);
 const parent = (path: string) => path.split("/").slice(0, -1).join("/");
 const fail = (err: unknown) => useWorkspace.setState({ error: (err as Error).message });
 const reload = () => useWorkspace.getState().load();
+/** Abas soltas pelo último Deletar (só o último tem Desfazer). */
+let detached: { key: string; path?: string; saved: string }[] = [];
+
+/** Foco num elemento do trilho depois que o React redesenhar (o teclado não cai no <body>). */
+const focusLater = (selector: string) =>
+  setTimeout(() => document.querySelector<HTMLElement>(selector)?.focus());
+
+async function undo({ from, to }: { from: string; to: string }) {
+  await files.move(to, from);
+  useRequest.setState((s) => ({
+    tabs: s.tabs.map((t) => ({ ...t, ...detached.find((d) => d.key === t.key) })),
+  }));
+  useWorkspace.setState({ trashed: undefined });
+  await reload();
+  focusLater(`[data-path="${CSS.escape(from)}"]`);
+}
 
 /** Depois de mover/copiar, o "name" de dentro do arquivo acompanha o nome novo. */
 async function syncName(from: string, to: string, isDir: boolean) {
@@ -47,7 +75,7 @@ async function syncName(from: string, to: string, isDir: boolean) {
 }
 
 export function Sidebar() {
-  const { tree, contents, history, error, load, loadHistory } = useWorkspace();
+  const { tree, contents, history, error, trashed, saving, op, load, loadHistory } = useWorkspace();
   const activePath = useRequest((s) => activeTab(s).path);
   // Arquivos com WebSocket/SSE aberto (numa aba): o "WS"/"SSE" do canal fica em cord-text.
   const tabs = useRequest((s) => s.tabs);
@@ -71,30 +99,40 @@ export function Sidebar() {
     });
   }, [load, loadHistory]);
 
-  // Ctrl+S salva a aba ativa; se ela ainda não tem arquivo, pergunta nome e pasta.
+  // Ctrl+S (atalho no App) e a palette pedem `saving`; sem arquivo ainda, pergunta nome e pasta.
+  useEffect(() => {
+    if (!saving) return;
+    useWorkspace.setState({ saving: false });
+    const tab = activeTab(useRequest.getState());
+    if (tab.path) {
+      useRequest.getState().save().catch(fail);
+      return;
+    }
+    setDialog({
+      title: "Salvar request",
+      name: tab.name,
+      folder: useWorkspace.getState().tree.find((e) => e.type === "dir")?.path ?? "",
+      submit: async (name, folder) => {
+        const path = join(folder, `${name}.json`);
+        if (path in useWorkspace.getState().contents) throw new Error(`Já existe: ${path}`);
+        await useRequest.getState().save(path);
+      },
+    });
+  }, [saving]);
+
+  // Ctrl Z desfaz o último deletar, fora de campos de texto (lá o Ctrl Z é do texto).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "s" || !(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      const tab = activeTab(useRequest.getState());
-      if (tab.path) {
-        useRequest.getState().save().catch(fail);
+      const { trashed } = useWorkspace.getState();
+      if (!trashed || e.key.toLowerCase() !== "z" || !(e.ctrlKey || e.metaKey) || e.shiftKey)
         return;
-      }
-      const { tree } = useWorkspace.getState();
-      setDialog({
-        title: "Salvar request",
-        name: tab.name,
-        folder: tree.find((e) => e.type === "dir")?.path ?? "",
-        submit: async (name, folder) => {
-          const path = join(folder, `${name}.json`);
-          if (path in useWorkspace.getState().contents) throw new Error(`Já existe: ${path}`);
-          await useRequest.getState().save(path);
-        },
-      });
+      const el = e.target as HTMLElement;
+      if (el.closest("input, textarea, select, [contenteditable=true], .cm-editor")) return;
+      e.preventDefault();
+      undo(trashed).catch(fail);
     };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const newCollection = () =>
@@ -165,24 +203,48 @@ export function Sidebar() {
     await reload();
   };
 
-  const remove = async (path: string) => {
-    await files.remove(path);
+  // Request deletada tem "Desfazer"; pasta leva tudo junto, então confirma antes com a contagem.
+  const remove = async (path: string, isDir = false) => {
+    if (isDir) {
+      const inside = all.filter((g) => g.path === path || g.path.startsWith(`${path}/`));
+      const n = inside.reduce((sum, g) => sum + g.requests.length, 0);
+      const what = n === 1 ? "1 request" : `${n} requests`;
+      if (!window.confirm(`Deletar "${path}" com ${what}? Vai para .trash/.`)) return;
+    }
+    const to = await files.remove(path);
+    // Abas desse arquivo/pasta ficam soltas; o Desfazer as religa ao arquivo restaurado.
+    detached = useRequest
+      .getState()
+      .tabs.filter((t) => t.path === path || t.path?.startsWith(`${path}/`))
+      .map(({ key, path, saved }) => ({ key, path, saved }));
     useRequest.getState().removed(path);
+    useWorkspace.setState({ trashed: { from: path, to } });
     await reload();
+    focusLater("#undo-trash"); // Enter ou Ctrl Z desfaz; Tab segue para o trilho
   };
 
-  const open = (path: string) => {
-    const content = contents[path];
-    if (!content) return fail(new Error(`JSON inválido em ${path}: corrija o arquivo à mão.`));
-    useRequest.getState().open(fromRequest(content), path);
-  };
+  // Operações pedidas pela command palette.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: roda só quando chega um pedido novo
+  useEffect(() => {
+    if (!op) return;
+    useWorkspace.setState({ op: undefined });
+    const run = {
+      rename: () => renameOrMove(op.path, false),
+      duplicate: () => duplicate(op.path, false).catch(fail),
+      delete: () => remove(op.path).catch(fail),
+      newCollection,
+      newFolder: () => newFolder(op.path),
+    };
+    run[op.kind]();
+  }, [op]);
 
-  const fileMenu = (path: string): MenuItem[] => [
-    ["Renomear / mover", () => renameOrMove(path, false)],
+  const fileMenu = (path: string): (MenuItem | null)[] => [
+    ["Renomear / mover", () => renameOrMove(path, false), "F2"],
     ["Duplicar", () => duplicate(path, false).catch(fail)],
-    ["Deletar", () => remove(path).catch(fail)],
+    null,
+    ["Deletar", () => remove(path).catch(fail), "Delete"],
   ];
-  const folderMenu = (path: string): MenuItem[] => [
+  const folderMenu = (path: string): (MenuItem | null)[] => [
     [
       path.includes("/") ? "Configurar (auth, headers)" : "Configurar (environments, auth…)",
       () => useEnvironments.getState().edit(path),
@@ -193,7 +255,8 @@ export function Sidebar() {
     ["Nova pasta", () => newFolder(path)],
     ["Renomear / mover", () => renameOrMove(path, true)],
     ["Duplicar", () => duplicate(path, true).catch(fail)],
-    ["Deletar", () => remove(path).catch(fail)],
+    null,
+    ["Deletar", () => remove(path, true).catch(fail)],
   ];
 
   let channel = 0;
@@ -236,6 +299,37 @@ export function Sidebar() {
         </p>
       )}
 
+      {trashed && (
+        <p
+          role="status"
+          className="flex items-center gap-2 border-b border-line py-1.5 pr-1.5 pl-3.5"
+        >
+          <span
+            className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-2"
+            title={trashed.to}
+          >
+            {baseName(trashed.from)} na .trash/
+          </span>
+          <button
+            id="undo-trash"
+            type="button"
+            title={`Desfazer (${mod("Z")})`}
+            onClick={() => undo(trashed).catch(fail)}
+            className="label shrink-0 px-2 py-1 text-[12px] outline-offset-[-2px] hover:shadow-[inset_0_-2px_var(--ink)]"
+          >
+            Desfazer
+          </button>
+          <button
+            type="button"
+            aria-label="Dispensar aviso"
+            onClick={() => useWorkspace.setState({ trashed: undefined })}
+            className="px-1.5 font-mono text-[14px] text-mute hover:text-ink"
+          >
+            ×
+          </button>
+        </p>
+      )}
+
       <nav aria-label="Coleções" className="min-h-0 flex-1 overflow-y-auto py-2">
         {all.length === 0 && (
           <p className="px-3.5 text-[15px] text-mute">
@@ -270,8 +364,9 @@ export function Sidebar() {
                     <button
                       type="button"
                       aria-current={selected ? "true" : undefined}
+                      data-path={entry.path}
                       title={`${entry.path} · F2 renomeia, Delete deleta`}
-                      onClick={() => open(entry.path)}
+                      onClick={() => openChannel(entry.path)}
                       onKeyDown={(e) => {
                         if (e.key === "F2") renameOrMove(entry.path, false);
                         if (e.key === "Delete") remove(entry.path).catch(fail);
@@ -311,15 +406,16 @@ export function Sidebar() {
   );
 }
 
-type MenuItem = [string, () => void];
+/** Texto, ação e, se tiver, a tecla que faz o mesmo no canal focado. */
+type MenuItem = [string, () => void, string?];
 
-function Menu(props: { label: string; items: MenuItem[] }) {
+function Menu(props: { label: string; items: (MenuItem | null)[] }) {
   return (
     // modal={false}: abrir um Dialog a partir do item não deixa o body travado.
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger
         aria-label={props.label}
-        className="shrink-0 px-2 font-mono text-[14px] opacity-0 outline-offset-[-2px] group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+        className="shrink-0 px-2 font-mono text-[14px] opacity-40 outline-offset-[-2px] group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
       >
         ⋯
       </DropdownMenu.Trigger>
@@ -328,15 +424,26 @@ function Menu(props: { label: string; items: MenuItem[] }) {
           align="end"
           className="z-50 min-w-44 border border-line bg-bg py-1 text-ink"
         >
-          {props.items.map(([text, action]) => (
-            <DropdownMenu.Item
-              key={text}
-              onSelect={action}
-              className="label cursor-default px-3.5 py-1.5 text-[12px] outline-none data-highlighted:bg-ink data-highlighted:text-bg"
-            >
-              {text}
-            </DropdownMenu.Item>
-          ))}
+          {/* null = fio separando o destrutivo do resto */}
+          {props.items.map((item, i) =>
+            item ? (
+              <DropdownMenu.Item
+                key={item[0]}
+                onSelect={item[1]}
+                className="label flex cursor-default items-center gap-4 px-3.5 py-1.5 text-[12px] outline-none data-highlighted:bg-ink data-highlighted:text-bg"
+              >
+                {item[0]}
+                {item[2] && (
+                  <span className="ml-auto font-mono font-normal tracking-normal normal-case">
+                    {item[2]}
+                  </span>
+                )}
+              </DropdownMenu.Item>
+            ) : (
+              // biome-ignore lint/suspicious/noArrayIndexKey: separador não tem identidade própria
+              <DropdownMenu.Separator key={i} className="my-1 h-px bg-line" />
+            ),
+          )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
@@ -350,7 +457,13 @@ const TONES: Record<number, string> = {
   4: "text-staging-text",
   5: "text-prod-text",
 };
-const STAMPS = { cancelled: "Cancelada", timeout: "Timeout", error: "Falhou" };
+
+/** "https://api.x.dev/users?id=1" → host "api.x.dev", caminho "/users?id=1". */
+function splitUrl(url: string) {
+  const rest = url.replace(/^[a-z][\w+.-]*:\/\//i, "");
+  const i = rest.search(/[/?#]/);
+  return i < 0 ? { host: rest, path: "/" } : { host: rest.slice(0, i), path: rest.slice(i) };
+}
 
 function when(at: string) {
   const date = new Date(at);
@@ -360,7 +473,8 @@ function when(at: string) {
     : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-/** Mesmo formato do canal, com a hora no lugar do número; clicar reabre numa aba nova. */
+/** Mesmo formato do canal, com a hora no lugar do número; clicar reabre numa aba nova.
+ *  A linha mostra só o caminho; o host vira um cabeçalho quando muda em relação à linha de cima. */
 function History({ entries }: { entries: HistoryEntry[] }) {
   return (
     <section
@@ -374,9 +488,16 @@ function History({ entries }: { entries: HistoryEntry[] }) {
       <ul className="min-h-0 overflow-y-auto pb-2">
         {entries.map((entry, index) => {
           const { request, response, failed } = entry;
+          const { host, path } = splitUrl(request.url);
+          const newHost = index === 0 || splitUrl(entries[index - 1].request.url).host !== host;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: entradas não têm id; o histórico só cresce no topo
             <li key={`${entry.at}-${index}`}>
+              {newHost && (
+                <p className="truncate px-3.5 pt-1.5 font-mono text-[12px] text-mute" title={host}>
+                  {host}
+                </p>
+              )}
               <button
                 type="button"
                 title={`${request.method} ${request.url}`}
@@ -389,9 +510,7 @@ function History({ entries }: { entries: HistoryEntry[] }) {
                 <span className="label">
                   {request.method === "DELETE" ? "DEL" : request.method}
                 </span>
-                <span className="truncate font-mono text-[12px] text-ink-2">
-                  {request.url.replace(/^https?:\/\//, "")}
-                </span>
+                <span className="truncate font-mono text-[12px] text-ink-2">{path}</span>
                 {failed ? (
                   <span className="label border-2 border-prod-text px-2 py-px text-[11px] text-prod-text">
                     {STAMPS[failed.reason]}

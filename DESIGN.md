@@ -271,7 +271,7 @@ O cenário é um único desenvolvedor ao lado de um editor escuro, em sessões l
 Um campo neutro quente e quase sem croma, interrompido só por cores que carregam significado. As cores da marca são constantes; a interface usa tokens semânticos (`--bg`, `--ink`, `--dev-text`…) que mudam por tema.
 
 ### Primary
-- **Laranja de Cabo** (cord, PB-108): reservado ao que está vivo. O botão Enviar, a request em voo, a conexão WebSocket ou SSE aberta (a lâmpada e o rótulo `WS` do canal conectado), o patch do logo. Também é o anel de foco do teclado, a única exceção ao "só vivo". Como preenchimento (Enviar, lâmpada, cabo do logo) é o mesmo nos dois temas; como texto usa `cord-text`, que no claro escurece para PB-118.
+- **Laranja de Cabo** (cord, PB-108): reservado ao que está vivo. O botão Enviar, a request em voo, a conexão WebSocket ou SSE aberta (a lâmpada e o rótulo `WS` do canal conectado), o patch do logo. Também é o anel de foco do teclado, a única exceção ao "só vivo". Sobre o próprio laranja (Enviar, Conectar) o anel vira fosco e entra 4px para dentro, porque laranja sobre laranja some. Como preenchimento (Enviar, lâmpada, cabo do logo) é o mesmo nos dois temas; como texto usa `cord-text`, que no claro escurece para PB-118.
 
 ### Secondary
 As quatro cores de fita formam um único código, sempre juntas na mesma ordem. Cada uma tem dois sentidos que nunca colidem na mesma peça: environment na fita do topo, classe de status no código e nas barras de frame.
@@ -337,7 +337,7 @@ Os tamanhos fixos do sistema são 11, 12, 12.5, 13, 14, 15, 16, 17, 19, 20, 28, 
 
 ## Layout
 
-Grade de ferramenta em colunas fixas separadas por fios de 1px. O app é uma barra superior (lockup, fita de environment que ocupa o espaço livre, atalho ⌘K) sobre três colunas: trilho de canais (270px), editor de request (fluido) e resposta (450px). Colunas não flutuam como cards; são divididas por `border-right` em fio.
+Grade de ferramenta em colunas fixas separadas por fios de 1px. O app é uma barra superior (lockup, fita de environment que ocupa o espaço livre, atalho ⌘K) sobre três colunas: trilho de canais (270–340px, cresce com a janela; recolhe com Ctrl B e começa recolhido abaixo de 1200px), editor de request (fluido) e resposta (fluida, mínimo 360px, 0.8 do editor). Quando editor e resposta somam menos de 800px, a resposta desce para baixo do editor. Colunas não flutuam como cards; são divididas por `border-right` em fio.
 
 Ritmo: linhas de canal com 6–7px de respiro vertical e 14px lateral; painéis com 16–18px de padding; grupos separados por 16px. Folhas de marca usam gutter clamp(16px, 4vw, 56px) e seções com clamp(40px, 5.5vw, 72px) de respiro vertical, divididas por fio. Abaixo de 860px as grades de duas colunas viram uma e os alvos de toque do seletor de tema sobem para 44px.
 
@@ -394,7 +394,7 @@ Botões segmentados Escuro / Claro / Sistema num contorno de 1px em apoio, label
 - **Abas:** condensadas 13px, gap 22px, inativas em apoio; a ativa em tinta com régua de 2px embaixo. Contadores entram no próprio rótulo (`Headers 3`).
 
 ### Navigation
-- **Trilho de canais:** cabeçalhos de grupo condensados 12px em apoio (`Loja / usuários`). Cada linha é número do canal (mono, apoio) · método (condensado, tinta) · nome numa etiqueta de tinta com texto na cor do fundo. O canal selecionado inverte inteiro. Histórico usa o mesmo formato, com hora no lugar do número.
+- **Trilho de canais:** cabeçalhos de grupo condensados 12px em apoio (`Loja / usuários`). Cada linha é número do canal (mono, apoio) · método (condensado, tinta) · nome numa etiqueta de tinta com texto na cor do fundo. O canal selecionado inverte inteiro. Histórico usa o mesmo formato, com hora no lugar do número e só o caminho da URL; o host vira um cabeçalho mono em apoio quando muda em relação à linha de cima.
 - **Command palette:** acessada por ⌘K, sinalizada pelo chip kbd na barra superior; também troca o tema.
 
 ### Fita de environment (assinatura)
@@ -404,7 +404,7 @@ Faixa preenchida com a cor do environment e o corte `--cut` nas pontas, texto fo
 Toda request tem um número fixo de dois dígitos que é o seu índice; ⌘1 a ⌘9 pulam direto. O nome vive numa etiqueta de tinta, como fita numa mesa.
 
 ### Faixa de frames (assinatura)
-No realtime, cada frame é uma barra fina (≈38% da célula) alinhada à base: altura pelo tamanho, cor pelo código. As barras usam classes que seguem o tema: tinta, laranja de cabo, `staging-text`. Novos frames entram pela direita a cada ~420ms enquanto a conexão está aberta; com `prefers-reduced-motion` a faixa fica estática. Abaixo, o log em mono: timecode `00:04:12:07` em apoio, direção `in`/`out` em apoio, payload em tinta 2.
+No realtime, cada frame é uma barra fina (≈38% da célula) alinhada à base: altura pelo tamanho, cor pelo código. As barras usam classes que seguem o tema: tinta, laranja de cabo, `staging-text`. Novos frames entram pela direita a cada ~420ms enquanto a conexão está aberta; com `prefers-reduced-motion` a faixa fica estática. No app, a faixa fica acima do log com os últimos 120 frames (altura em escala log até 64 KB; erro em `staging-text`) e não anima sozinha: a barra nova aparece quando o frame chega. Abaixo, o log em mono: timecode `00:04:12:07` (HH:MM:SS:centésimos desde a última abertura da conexão; a hora do relógio fica no title) em apoio, direção `in`/`out` em apoio, payload em tinta 2.
 
 ### Carimbo de cancelamento (assinatura)
 Requests abortadas, com timeout ou falhas ficam no histórico com um carimbo: borda de 2px e texto em `prod-text`, condensado 11–13px, 1px 8px. Nada some; tudo cancela.

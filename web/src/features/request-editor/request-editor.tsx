@@ -43,14 +43,14 @@ export function RequestEditor() {
   const inheritedFrom = parents.find((p) => p.auth && p.auth.type !== "inherit")?.folder;
   const auth = effectiveAuth(r.auth, parents);
 
-  // Ctrl+Enter envia de qualquer lugar (inclusive de dentro do CodeMirror); Esc cancela em voo.
+  // Ctrl+Enter envia de qualquer lugar (Shift: mesmo com variável sem valor) (inclusive de dentro do CodeMirror); Esc cancela em voo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const { send, cancel, ...s } = useRequest.getState();
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         e.stopPropagation();
-        send();
+        send(e.shiftKey); // Ctrl Shift ↵: envia mesmo com {{var}} sem valor
       } else if (e.key === "Escape" && activeTab(s).result.state === "sending") {
         cancel();
       }
@@ -79,7 +79,10 @@ export function RequestEditor() {
           ))}
         </select>
         <VarInput
+          id="url"
           aria-label="URL"
+          // Aba nova (Ctrl T, palette, +) já abre digitando a URL.
+          autoFocus={!r.url}
           placeholder="https://api.exemplo.dev/recurso  ou  {{baseUrl}}/recurso"
           spellCheck={false}
           value={r.url}
@@ -110,7 +113,7 @@ export function RequestEditor() {
         ) : (
           <button
             type="submit"
-            className="label flex shrink-0 items-center gap-2.5 bg-cord px-4 text-[16px] text-matte"
+            className="label flex shrink-0 items-center gap-2.5 bg-cord px-4 focus-visible:outline-matte focus-visible:outline-offset-[-4px] text-[16px] text-matte"
           >
             Enviar
             <span className="font-mono text-[12px] font-normal normal-case tracking-normal">

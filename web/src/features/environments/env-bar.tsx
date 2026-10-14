@@ -45,7 +45,7 @@ export function EnvBar() {
         {collection}
       </span>
       {envs.length > 0 && (
-        <fieldset className="flex shrink-0 border border-mute">
+        <fieldset id="env-select" className="flex shrink-0 border border-mute">
           <legend className="sr-only">Environment ativo</legend>
           {[{ name: "" }, ...envs].map((e) => (
             <button

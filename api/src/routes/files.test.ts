@@ -62,9 +62,13 @@ it("CRUD, move, copy e delete para a .trash", async () => {
   expect((await app.inject(q("loja2/list.json"))).body).toBe('{"a":1}');
 
   // delete vai para a .trash, preservando o caminho e sem colidir
-  expect((await app.inject({ method: "DELETE", url: q("loja/list.json") })).statusCode).toBe(204);
+  expect((await app.inject({ method: "DELETE", url: q("loja/list.json") })).json()).toEqual({
+    trashed: ".trash/loja/list.json",
+  });
   await put("loja/list.json", "v2");
-  await app.inject({ method: "DELETE", url: q("loja/list.json") });
+  expect((await app.inject({ method: "DELETE", url: q("loja/list.json") })).json()).toEqual({
+    trashed: ".trash/loja/list 2.json",
+  });
   expect(readFileSync(path.join(ws, ".trash/loja/list.json"), "utf8")).toBe('{"a":1}');
   expect(readFileSync(path.join(ws, ".trash/loja/list 2.json"), "utf8")).toBe("v2");
   expect(existsSync(path.join(ws, "loja/list.json"))).toBe(false);

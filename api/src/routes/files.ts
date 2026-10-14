@@ -51,10 +51,9 @@ export function filesRoute(app: FastifyInstance) {
       return reply.code(204).send();
     });
 
-    scope.delete("/files", async (req, reply) => {
-      await trash(parse(PathQuery, req.query).path);
-      return reply.code(204).send();
-    });
+    scope.delete("/files", async (req) => ({
+      trashed: await trash(parse(PathQuery, req.query).path),
+    }));
 
     // move = renomear/mover; copy = duplicar. Nunca sobrescrevem.
     for (const [url, op] of [

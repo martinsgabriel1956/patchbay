@@ -26,6 +26,11 @@ export function varsFrom(...layers: unknown[]): Vars {
 export const interpolate = (text: string, vars: Vars) =>
   text.replace(VAR, (raw, name: string) => (Object.hasOwn(vars, name) ? vars[name] : raw));
 
+/** Nomes das `{{var}}` que sobraram numa request já resolvida (sem valor no escopo). */
+export const unresolved = (req: unknown) => [
+  ...new Set([...JSON.stringify(req).matchAll(VAR)].map((m) => m[1])),
+];
+
 /** Texto em pedaços para destacar: `name` só nos pedaços que são variável. */
 export const parts = (text: string) =>
   text

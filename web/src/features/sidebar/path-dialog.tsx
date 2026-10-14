@@ -20,6 +20,9 @@ function invalid(name: string) {
   if (name === "collection") return "“collection” é reservado.";
 }
 
+const button =
+  "label h-[34px] w-fit border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]";
+
 export function PathDialog(props: PathDialogProps & { folders: string[]; onClose: () => void }) {
   const [name, setName] = useState(props.name);
   const [folder, setFolder] = useState(props.folder);
@@ -72,12 +75,14 @@ export function PathDialog(props: PathDialogProps & { folders: string[]; onClose
               {error}
             </p>
           )}
-          <button
-            type="submit"
-            className="label h-[34px] w-fit border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]"
-          >
-            Salvar
-          </button>
+          <div className="flex gap-2">
+            <button type="submit" className={button}>
+              Salvar
+            </button>
+            <button type="button" onClick={props.onClose} className={button}>
+              Cancelar
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
