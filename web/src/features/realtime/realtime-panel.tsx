@@ -2,11 +2,24 @@
 // handshake (headers da resposta, no SSE) e o log. MessageLog só recebe linhas: WS e SSE usam o mesmo.
 import { Fragment, memo, useMemo, useState } from "react";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
-import { activeTab, useRequest } from "@/features/request-editor/store";
+import { activeTab, toRealtime, useRequest, where } from "@/features/request-editor/store";
+import { diagnose, STAMPS } from "@/features/response-viewer/diagnose";
+import { focusUrl, mod } from "@/lib/utils";
 import { type Entry, useRealtime } from "./store";
 
 const STATUS = { connecting: "Conectando", open: "Conectado", closed: "Desconectado" };
 const NO_LOG: Entry[] = [];
+const action =
+  "label h-[34px] border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]";
+
+/** Erro da última tentativa de conexão, se ela terminou em erro (e não num Desconectar). */
+export function lastError(log: Entry[]) {
+  for (let i = log.length - 1; i >= 0; i--) {
+    const e = log[i];
+    if (e.kind === "error") return e.data;
+    if (e.kind === "open") return undefined; // tentativa nova (ou conectou) sem erro depois
+  }
+}
 
 export function RealtimePanel() {
   const key = useRequest((s) => activeTab(s).key);
@@ -14,22 +27,27 @@ export function RealtimePanel() {
   const conn = useRealtime((s) => s.conns[key]);
   const status = conn?.status ?? "closed";
   const headers = conn?.headers ?? [];
+  const error = status === "closed" ? lastError(conn?.log ?? NO_LOG) : undefined;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2.5 px-[18px] pt-[18px] pb-3.5" role="status">
-        {status !== "closed" && <span className="size-[9px] shrink-0 rounded-full bg-cord" />}
-        <span
-          className={`label text-[17px] ${status === "closed" ? "text-mute" : "text-cord-text"}`}
-        >
-          {STATUS[status]}
-        </span>
-        {conn?.protocol && (
-          <span className="ml-auto font-mono text-[13px]">
-            <span className="text-mute">subprotocolo</span> {conn.protocol}
+      {error ? (
+        <Failure error={error} />
+      ) : (
+        <div className="flex items-center gap-2.5 px-[18px] pt-[18px] pb-3.5" role="status">
+          {status !== "closed" && <span className="size-[9px] shrink-0 rounded-full bg-cord" />}
+          <span
+            className={`label text-[17px] ${status === "closed" ? "text-mute" : "text-cord-text"}`}
+          >
+            {STATUS[status]}
           </span>
-        )}
-      </div>
+          {conn?.protocol && (
+            <span className="ml-auto font-mono text-[13px]">
+              <span className="text-mute">subprotocolo</span> {conn.protocol}
+            </span>
+          )}
+        </div>
+      )}
 
       <TabsRoot defaultValue="log" className="flex min-h-0 flex-1 flex-col">
         <TabList aria-label="Partes da conexão">
@@ -66,13 +84,48 @@ export function RealtimePanel() {
   );
 }
 
+/** Conexão que terminou em erro: o mesmo carimbo, diagnóstico e saídas de uma request HTTP. */
+function Failure({ error }: { error: string }) {
+  const url = useRequest((s) => activeTab(s).url);
+  const diagnosis = diagnose("error", error, url);
+  const reconnect = () => {
+    const tab = activeTab(useRequest.getState());
+    useRealtime.getState().connect(tab.key, toRealtime(tab), where(tab));
+  };
+  return (
+    <div className="grid gap-3 px-[18px] pt-[18px] pb-3.5" role="alert">
+      <span className="label w-fit border-2 border-prod-text px-2 py-px text-prod-text">
+        {STAMPS.error}
+      </span>
+      {diagnosis && <p className="max-w-[64ch] text-[15px] text-ink">{diagnosis.hint}</p>}
+      <p className="font-mono text-[13px] break-words text-ink-2">{error}</p>
+      <div className="flex flex-wrap gap-2">
+        {diagnosis?.fix === "url" && (
+          <button type="button" onClick={focusUrl} className={action}>
+            Corrigir URL
+            <span className="ml-1.5 font-mono font-normal tracking-normal text-mute normal-case">
+              {mod("L")}
+            </span>
+          </button>
+        )}
+        <button type="button" onClick={reconnect} className={action}>
+          Reconectar
+          <span className="ml-1.5 font-mono font-normal tracking-normal text-mute normal-case">
+            {mod("↵")}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Faixa de frames (DESIGN.md › assinatura): uma barra fina por frame, a mais nova à direita.
 // Altura pelo tamanho (escala log até 64 KB), cor pelo código: in em tinta, out no cabo, erro em
-// staging-text. Sem animação própria: a barra nova só aparece quando o frame chega.
+// prod-text (a mesma cor do erro no log). Sem animação própria: a barra nova só aparece quando o frame chega.
 const SLOTS = 120;
 const SLOT = 4;
 const STRIP_H = 36;
-const FILL = { in: "fill-ink", out: "fill-cord", err: "fill-staging-text" };
+const FILL = { in: "fill-ink", out: "fill-cord", err: "fill-prod-text" };
 
 function FrameStrip({ entries }: { entries: Entry[] }) {
   const frames = entries
@@ -93,6 +146,7 @@ function FrameStrip({ entries }: { entries: Entry[] }) {
       preserveAspectRatio="none"
       className="block h-9 w-full shrink-0"
     >
+      <title>Frames: recebidos em tinta, enviados no cabo, erros em vermelho</title>
       {frames.map((f, i) => {
         const h = 3 + (STRIP_H - 4) * Math.min(1, Math.log2(f.size + 1) / 16);
         return (
@@ -122,6 +176,7 @@ export function timecode(ms: number) {
 /** Log de frames, mais novo no topo. Filtro por texto e Limpar. */
 export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: () => void }) {
   const [filter, setFilter] = useState("");
+  const [raw, setRaw] = useState(false);
   const shown = useMemo(() => {
     const q = filter.toLowerCase();
     const list = q ? entries.filter((e) => e.data.toLowerCase().includes(q)) : entries;
@@ -158,6 +213,19 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
         <span className="font-mono text-[12px] text-mute tabular-nums">
           {filter ? `${shown.length}/${entries.length}` : entries.length}
         </span>
+        <div className="inline-flex shrink-0 border border-mute">
+          {(["Raw", "Pretty"] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={raw === (name === "Raw")}
+              onClick={() => setRaw(name === "Raw")}
+              className="label px-2.5 py-1 text-[12px] aria-pressed:bg-ink aria-pressed:text-bg"
+            >
+              {name}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={onClear}
@@ -172,7 +240,7 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
       ) : (
         <ol aria-label="Mensagens" className="min-h-0 flex-1 overflow-y-auto py-1.5">
           {shown.map((entry) => (
-            <Row key={entry.id} entry={entry} code={codes.get(entry.id) ?? ""} />
+            <Row key={entry.id} entry={entry} code={codes.get(entry.id) ?? ""} raw={raw} />
           ))}
         </ol>
       )}
@@ -198,7 +266,7 @@ function pretty(data: string) {
 }
 
 // memo: linhas não mudam depois de criadas; só as novas renderizam (e só elas parseiam JSON).
-const Row = memo(function Row({ entry, code }: { entry: Entry; code: string }) {
+const Row = memo(function Row({ entry, code, raw }: { entry: Entry; code: string; raw: boolean }) {
   const event = entry.dir === "event";
   const tone = entry.kind === "error" ? "text-prod-text" : event ? "text-mute" : "text-ink-2";
   return (
@@ -206,7 +274,15 @@ const Row = memo(function Row({ entry, code }: { entry: Entry; code: string }) {
       <span className="text-[12px] text-mute tabular-nums" title={clock(entry.at)}>
         {code}
       </span>
-      <span className="text-mute">
+      <span
+        className={
+          entry.kind === "error"
+            ? "text-prod-text"
+            : entry.dir === "out"
+              ? "text-cord-text"
+              : "text-mute"
+        }
+      >
         {event ? (entry.kind === "error" ? "err" : "·") : entry.dir}
       </span>
       {entry.binary ? (
@@ -223,7 +299,7 @@ const Row = memo(function Row({ entry, code }: { entry: Entry; code: string }) {
             </span>
           )}
           <pre className={`break-words whitespace-pre-wrap ${tone}`}>
-            {event ? entry.data : pretty(entry.data)}
+            {event || raw ? entry.data : pretty(entry.data)}
           </pre>
         </div>
       )}

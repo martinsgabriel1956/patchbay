@@ -44,11 +44,79 @@ type Workspace = {
   saving?: boolean;
   /** Operação de arquivo pedida de fora do trilho (command palette); a sidebar atende. */
   op?: { kind: "rename" | "duplicate" | "delete" | "newCollection" | "newFolder"; path: string };
+  /** Confirmação curta (ex. "Salvo em …"); some sozinha. */
+  notice?: string;
   /** Último item deletado: `to` é onde ficou na lixeira, para o "Desfazer". */
   trashed?: { from: string; to: string };
   load: () => Promise<void>;
   loadHistory: () => Promise<void>;
 };
+
+export type Group = { path: string; requests: TreeEntry[] };
+
+const baseName = (name: string) => name.replace(/\.json$/, "");
+
+/** Árvore → grupos em ordem de leitura: a raiz (se tiver requests) e cada pasta.
+ *  `<coleção>/environments/` não é grupo de requests: é editado em Configurar. Dentro do grupo,
+ *  pelo número do canal (sem número, depois, pelo nome). */
+export function groups(
+  entries: TreeEntry[],
+  contents: Record<string, unknown> = {},
+  path = "",
+  out: Group[] = [],
+): Group[] {
+  const requests = entries
+    .filter((e) => e.type === "file" && e.name.endsWith(".json") && e.name !== "collection.json")
+    .sort(
+      (a, b) =>
+        (channelOf(contents[a.path]) ?? Infinity) - (channelOf(contents[b.path]) ?? Infinity) ||
+        baseName(a.name).localeCompare(baseName(b.name)), // "X" antes de "X cópia"
+    );
+  if (path || requests.length) out.push({ path, requests });
+  for (const e of entries) {
+    const envDir = e.name === "environments" && e.path.split("/").length === 2;
+    if (e.type === "dir" && !envDir) groups(e.children ?? [], contents, e.path, out);
+  }
+  return out;
+}
+
+/** O número gravado no arquivo, se for válido. */
+export const channelOf = (content: unknown) => {
+  const n = (content as { channel?: unknown } | null)?.channel;
+  return typeof n === "number" && Number.isInteger(n) && n > 0 ? n : undefined;
+};
+
+/** Próximo número livre: o maior + 1 (o número de um canal deletado pode voltar a ser usado). */
+export const nextChannel = (contents = useWorkspace.getState().contents) =>
+  Math.max(0, ...Object.values(contents).map((c) => channelOf(c) ?? 0)) + 1;
+
+/** Requests sem número, com número inválido ou repetido (cópia, import, merge do git): quem vem
+ *  primeiro na ordem do trilho fica com o número; as outras ganham max+1, nessa ordem. */
+export function numberChannels(paths: string[], contents: Record<string, unknown>) {
+  const seen = new Set<number>();
+  const missing: string[] = [];
+  for (const path of paths) {
+    const content = contents[path];
+    if (!content || typeof content !== "object") continue; // JSON inválido: não sobrescreve
+    const n = channelOf(content);
+    if (n === undefined || seen.has(n)) missing.push(path);
+    else seen.add(n);
+  }
+  let next = Math.max(0, ...seen);
+  return missing.map((path) => ({ path, channel: ++next }));
+}
+
+/** O número entra logo depois do "name" (ordem de chaves fixa: diff limpo no git). */
+export function withChannel(content: Record<string, unknown>, channel: number) {
+  const out: Record<string, unknown> = {};
+  if (!("name" in content)) out.channel = channel;
+  for (const [key, value] of Object.entries(content)) {
+    if (key === "channel") continue;
+    out[key] = value;
+    if (key === "name") out.channel = channel;
+  }
+  return out;
+}
 
 const jsonFiles = (entries: TreeEntry[]): string[] =>
   entries.flatMap((e) =>
@@ -75,6 +143,12 @@ export const useWorkspace = create<Workspace>()((set) => ({
           contents[path] = null;
         }
       });
+      // Dá número às requests que ainda não têm (ou repetem) e grava no arquivo.
+      const order = groups(tree).flatMap((g) => g.requests.map((r) => r.path));
+      for (const { path, channel } of numberChannels(order, contents)) {
+        contents[path] = withChannel(contents[path] as Record<string, unknown>, channel);
+        await files.write(path, json(contents[path]));
+      }
       set({ tree, contents, error: undefined });
     } catch (err) {
       set({ error: (err as Error).message });

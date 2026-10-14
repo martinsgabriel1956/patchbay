@@ -4,7 +4,14 @@
 import type { Auth, KV } from "@api/schemas";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  confirm,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  dialogPrimary,
+} from "@/components/ui/dialog";
 import { AuthEditor } from "@/features/request-editor/auth-editor";
 import { KvTable } from "@/features/request-editor/kv-table";
 import { files, json, useWorkspace } from "@/features/sidebar/store";
@@ -47,8 +54,16 @@ export function CollectionDialog() {
   }, [folder]);
 
   if (!folder || !secrets) return null;
-  const close = () => {
-    if (dirty.current && !window.confirm("Descartar as alterações não salvas?")) return;
+  const close = async () => {
+    if (
+      dirty.current &&
+      (await confirm({
+        title: "Alterações não salvas",
+        body: "Descartar o que mudou nesta configuração?",
+        confirm: "Descartar",
+      })) !== "confirm"
+    )
+      return;
     dirty.current = false;
     useEnvironments.getState().edit(undefined);
   };
@@ -145,6 +160,7 @@ function Editor({
     await useWorkspace.getState().load();
     dirty.current = false;
     store.edit(undefined);
+    useWorkspace.setState({ notice: `Configuração de ${folder} salva` });
   };
 
   return (
@@ -278,7 +294,7 @@ function Editor({
           </p>
         )}
         <div className="flex gap-2">
-          <button type="submit" className={button}>
+          <button type="submit" className={dialogPrimary}>
             Salvar
           </button>
           <button type="button" onClick={onCancel} className={button}>

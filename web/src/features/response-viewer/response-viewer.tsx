@@ -6,6 +6,8 @@ import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import { useCurrentEnvironments } from "@/features/environments/env-bar";
 import { useEnvironments } from "@/features/environments/store";
 import { activeTab, useRequest } from "@/features/request-editor/store";
+import { openHistory, when } from "@/features/sidebar/sidebar";
+import { useWorkspace } from "@/features/sidebar/store";
 import { focusUrl, isMac, mod } from "@/lib/utils";
 import { diagnose, STAMPS } from "./diagnose";
 
@@ -40,11 +42,7 @@ function EnvActions() {
   return (
     <>
       {envs.length > 0 && (
-        <Action
-          onClick={() =>
-            document.querySelector<HTMLElement>("#env-select [aria-pressed=true]")?.focus()
-          }
-        >
+        <Action onClick={() => useEnvironments.setState({ picking: true })}>
           Escolher environment
         </Action>
       )}
@@ -69,19 +67,7 @@ export function ResponseViewer() {
   const cancel = useRequest((s) => s.cancel);
   const send = useRequest((s) => s.send);
 
-  if (result.state === "idle") {
-    return (
-      <div className="grid content-start gap-4 overflow-y-auto p-[18px]">
-        <p className="text-[15px] text-mute">
-          Nenhuma resposta ainda. Monte a request e envie com {isMac ? "⌘↵" : "Ctrl ↵"}.
-        </p>
-        <section aria-label="Atalhos" className="grid gap-2.5">
-          <h2 className="label text-[12px] text-mute">Atalhos</h2>
-          <ShortcutList />
-        </section>
-      </div>
-    );
-  }
+  if (result.state === "idle") return <Idle />;
   if (result.state === "sending") {
     return (
       <div className="flex items-center gap-2.5 p-[18px]" role="status">
@@ -90,6 +76,23 @@ export function ResponseViewer() {
         <button type="button" onClick={cancel} className={`${button} ml-auto`}>
           Cancelar
         </button>
+      </div>
+    );
+  }
+  if (result.state === "blocked" && result.missing.length === 0) {
+    return (
+      <div className="grid gap-3.5 p-[18px]" role="alert">
+        <span className="label w-fit border-2 border-prod-text px-2 py-px text-prod-text">
+          Não enviada
+        </span>
+        <p className="max-w-[64ch] text-[15px] text-ink">
+          Falta a URL. Digite o endereço do endpoint e envie.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Action onClick={focusUrl} keys={mod("L")}>
+            Corrigir URL
+          </Action>
+        </div>
       </div>
     );
   }
@@ -141,12 +144,107 @@ export function ResponseViewer() {
   return <Response response={result.response} />;
 }
 
+/** Coluna vazia. Primeira vez no app: a folha de atalhos inteira. Depois: o que o histórico
+ *  lembra desta request (o body não fica guardado) e uma linha de ajuda. */
+function Idle() {
+  const history = useWorkspace((s) => s.history);
+  const tab = useRequest(activeTab);
+  const send = useRequest((s) => s.send);
+  const last = history.find((h) =>
+    tab.path
+      ? h.request.id === tab.id
+      : h.request.method === tab.method && h.request.url === tab.url && !!tab.url,
+  );
+
+  if (history.length === 0)
+    return (
+      <div className="grid h-full content-start gap-4 overflow-y-auto p-[18px]">
+        <p className="text-[15px] text-mute">
+          Nenhuma resposta ainda. Monte a request e envie com {isMac ? "⌘↵" : "Ctrl ↵"}.
+        </p>
+        <section aria-label="Atalhos" className="grid gap-2.5">
+          <h2 className="label text-[12px] text-mute">Atalhos</h2>
+          <ShortcutList />
+        </section>
+      </div>
+    );
+
+  return (
+    <div className="grid h-full content-start gap-3.5 overflow-y-auto p-[18px]">
+      {last ? (
+        <>
+          <h2 className="label text-[12px] text-mute">Última resposta · {when(last.at)}</h2>
+          {/* A que request ela respondeu: o rascunho pode ter mudado desde então. */}
+          <p className="truncate font-mono text-[13px] text-ink-2" title={last.request.url}>
+            {last.request.method} {last.request.url}
+            {(last.request.url !== tab.url || last.request.method !== tab.method) && (
+              <span className="text-mute"> · outra versão</span>
+            )}
+          </p>
+          {last.response ? (
+            <>
+              <div className="flex items-baseline gap-3.5">
+                <span
+                  className={`font-mono text-[40px] leading-none font-semibold tabular-nums ${TONES[Math.floor(last.response.status / 100)] ?? "text-ink"}`}
+                >
+                  {last.response.status}
+                </span>
+                <span className="label min-w-0 truncate text-[17px]">
+                  {last.response.statusText}
+                </span>
+              </div>
+              <dl className="flex flex-wrap gap-x-4 font-mono text-[13px] tabular-nums">
+                <Meta label="tempo" value={`${last.response.timeMs} ms`} />
+                <Meta label="tamanho" value={bytes(last.response.sizeBytes)} />
+              </dl>
+            </>
+          ) : (
+            last.failed && (
+              <>
+                <span className="label w-fit border-2 border-prod-text px-2 py-px text-prod-text">
+                  {STAMPS[last.failed.reason]}
+                </span>
+                <p className="font-mono text-[13px] break-words text-ink-2">
+                  {last.failed.message}
+                </p>
+              </>
+            )
+          )}
+          <p className="max-w-[64ch] text-[15px] text-mute">
+            O histórico guarda o resumo, não o body. Envie de novo para ver a resposta inteira.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {tab.url.trim() && (
+              <Action onClick={() => send()} keys={mod("↵")}>
+                Enviar de novo
+              </Action>
+            )}
+            {(last.request.url !== tab.url || last.request.method !== tab.method) && (
+              <Action onClick={() => openHistory(last.request)}>Abrir aquela versão</Action>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="text-[15px] text-mute">
+          Nenhuma resposta para esta request ainda. Envie com {mod("↵")}.
+        </p>
+      )}
+      <p className="text-[15px] text-mute">
+        Todos os atalhos: <kbd className="kbd">{mod("/")}</kbd>
+      </p>
+    </div>
+  );
+}
+
 function Response({ response }: { response: HttpResponse }) {
   const [pretty, setPretty] = useState(true);
   const type = response.headers.find(([key]) => key.toLowerCase() === "content-type")?.[1] ?? "";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <p role="status" className="sr-only">
+        Resposta {response.status} {response.statusText} em {response.timeMs} ms
+      </p>
       <div className="flex items-center gap-3.5 px-[18px] pt-[18px]">
         <span
           className={`font-mono text-[48px] leading-none font-semibold tabular-nums ${TONES[Math.floor(response.status / 100)] ?? "text-ink"}`}

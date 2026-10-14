@@ -5,10 +5,17 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 
 // shadcn/ui (radix-lyra), ajustado ao DESIGN.md: item ativo por inversão, sem ícones.
 // Busca por substring (não fuzzy): "tema" acha só "Tema: …", nunca "imporTar colEção (postMAn".
-const contains = (value: string, search: string, keywords?: string[]) =>
-  [value, ...(keywords ?? [])].join(" ").toLowerCase().includes(search.trim().toLowerCase())
+// Várias palavras valem todas, em qualquer ordem: "post localhost:1".
+const contains = (value: string, search: string, keywords?: string[]) => {
+  const text = [value, ...(keywords ?? [])].join(" ").toLowerCase();
+  return search
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => text.includes(w))
     ? 1
     : 0;
+};
 
 function CommandDialog({
   title,

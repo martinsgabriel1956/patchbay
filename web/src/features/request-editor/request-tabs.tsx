@@ -2,22 +2,58 @@
 // tinta com régua de 2px); "•" marca o que ainda não foi salvo no disco.
 
 import { useEffect, useRef } from "react";
+import { confirm } from "@/components/ui/dialog";
 import { useRealtime } from "@/features/realtime/store";
+import { useWorkspace } from "@/features/sidebar/store";
 import { focusUrl, mod } from "@/lib/utils";
 import { activeTab, isDirty, useRequest } from "./store";
 
-/** Fecha a aba; com alteração não salva, pergunta antes (×, clique do meio, Ctrl W). */
-export function closeTab(key: string) {
+/** Fecha a aba. Com alteração não salva ou conexão realtime viva, pergunta antes (×, clique do
+ *  meio, Ctrl W). */
+export async function closeTab(key: string) {
   const tab = useRequest.getState().tabs.find((t) => t.key === key);
-  if (tab && isDirty(tab) && !window.confirm(`Fechar "${tab.name}" sem salvar?`)) return;
+  if (!tab) return;
+  const live = useRealtime.getState().conns[key]?.status === "open";
+  const drops = live ? ` Fechar também desconecta o ${tab.kind.toUpperCase()}.` : "";
+  if (isDirty(tab)) {
+    const answer = await confirm({
+      title: "Alterações não salvas",
+      body: `"${label(tab)}" tem alterações que não estão no disco.${drops} Se fechar, ${mod("Shift T").replaceAll(" ", "\u00a0")} reabre.`,
+      // Sem arquivo ainda: a ação principal é escolher onde salvar (a aba fica aberta).
+      alt: tab.path ? "Salvar e fechar" : "Salvar…",
+      confirm: "Fechar sem salvar",
+    });
+    if (answer === "cancel") return;
+    if (answer === "alt") {
+      useRequest.getState().activate(key);
+      if (!tab.path) return useWorkspace.setState({ saving: true });
+      await useRequest.getState().save();
+    }
+  } else if (live) {
+    const answer = await confirm({
+      title: "Conexão aberta",
+      body: `Fechar "${label(tab)}" desconecta o ${tab.kind.toUpperCase()} e descarta o log.`,
+      confirm: "Desconectar e fechar",
+    });
+    if (answer === "cancel") return;
+  }
+  // O foco segue para a URL da aba que ficou ativa (efeito em RequestTabs).
   useRequest.getState().close(key);
-  // O foco não cai no <body>: vai para a URL da aba que ficou ativa.
-  setTimeout(focusUrl);
+}
+
+/** Aba nunca salva e já com URL: o caminho da URL diz mais que "Nova request". */
+function label(tab: { name: string; path?: string; url: string }) {
+  if (tab.path || !tab.url.trim()) return tab.name;
+  const rest = tab.url.replace(/^[a-z][\w+.-]*:\/\//i, "");
+  const i = rest.search(/[/?#]/);
+  return i < 0 || rest.slice(i) === "/" ? rest : rest.slice(i);
 }
 
 export function RequestTabs() {
   const tabs = useRequest((s) => s.tabs);
   const active = useRequest((s) => activeTab(s).key);
+  // O rótulo da ativa cresce ao digitar a URL: re-revela para ela não sair da vista.
+  const activeLabel = useRequest((s) => label(activeTab(s)));
   const { activate, newTab } = useRequest.getState();
   const conns = useRealtime((s) => s.conns);
   const strip = useRef<HTMLElement>(null);
@@ -25,10 +61,21 @@ export function RequestTabs() {
   // A aba ativa sempre à vista, mesmo com mais abas do que cabem (Ctrl T, Ctrl Tab, Ctrl 1–9).
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-rola quando a ativa ou a contagem muda
   useEffect(() => {
-    strip.current
-      ?.querySelector("[aria-current=true]")
-      ?.scrollIntoView({ inline: "nearest", block: "nearest" });
-  }, [active, tabs.length]);
+    const reveal = () =>
+      strip.current
+        ?.querySelector("[aria-current=true]")
+        ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+    reveal();
+    // Trocou de aba (Ctrl Tab, Ctrl Shift T, histórico): o teclado segue para a URL, não cai no <body>.
+    const timer = setTimeout(() => {
+      if (document.activeElement === document.body) focusUrl();
+    });
+    window.addEventListener("resize", reveal);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", reveal);
+    };
+  }, [active, tabs.length, activeLabel]);
 
   return (
     <div className="flex shrink-0 border-b border-line">
@@ -45,9 +92,14 @@ export function RequestTabs() {
         {tabs.map((tab) => {
           const selected = tab.key === active;
           const dirty = isDirty(tab);
-          // Duas abas com o mesmo nome: a pasta desempata.
+          const name = label(tab);
+          // Duas abas com o mesmo nome: a pasta desempata; sem pasta (não salvas), a ordem.
+          const twins = tabs.filter((t) => label(t) === name);
           const folder =
-            tabs.some((t) => t !== tab && t.name === tab.name) && tab.path?.split("/").at(-2);
+            twins.length > 1 &&
+            (tab.path
+              ? (tab.path.split("/").at(-2) ?? "raiz")
+              : String(twins.filter((t) => !t.path).indexOf(tab) + 1));
           // Canal realtime conectado fica em cord-text (DESIGN.md › Monochrome Method Rule).
           const live = conns[tab.key]?.status === "open";
           return (
@@ -67,7 +119,7 @@ export function RequestTabs() {
                   {tab.kind === "http" ? tab.method : tab.kind.toUpperCase()}
                 </span>
                 <span className="truncate text-[13px]">
-                  {tab.name}
+                  {name}
                   {folder && <span className="font-mono text-[12px] text-mute"> · {folder}</span>}
                 </span>
                 {dirty && (
@@ -78,9 +130,10 @@ export function RequestTabs() {
               </button>
               <button
                 type="button"
-                aria-label={`Fechar ${tab.name}`}
+                aria-label={`Fechar ${name}`}
+                title={`Fechar (${mod("W")})`}
                 onClick={() => closeTab(tab.key)}
-                className="px-2 font-mono text-[14px] text-mute outline-offset-[-2px] hover:text-ink"
+                className="self-stretch px-2.5 font-mono text-[14px] text-mute outline-offset-[-2px] hover:text-ink"
               >
                 ×
               </button>

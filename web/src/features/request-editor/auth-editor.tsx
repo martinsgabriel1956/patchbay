@@ -3,7 +3,7 @@
 import type { Auth } from "@api/schemas";
 import { Segmented } from "@/components/segmented";
 import { VarInput } from "@/components/var-input";
-import type { Scope } from "@/features/environments/store";
+import { type Scope, useEnvironments } from "@/features/environments/store";
 
 type AuthType = Auth["type"];
 const TYPES: [AuthType, string][] = [
@@ -101,7 +101,17 @@ export function AuthEditor(props: {
           ) : (
             "Nenhuma pasta acima define auth: a request vai sem."
           )}{" "}
-          Para mudar, use “Configurar” no menu ⋯ da pasta.
+          {props.inherited?.from ? (
+            <button
+              type="button"
+              onClick={() => useEnvironments.getState().edit(props.inherited?.from)}
+              className="text-ink underline decoration-dashed underline-offset-4 hover:decoration-solid"
+            >
+              Configurar auth de {props.inherited.from}
+            </button>
+          ) : (
+            "Para mudar, use “Configurar” no menu ⋯ da pasta."
+          )}
         </p>
       )}
       {auth.type === "none" && <p className="text-[15px] text-mute">Request sem auth.</p>}

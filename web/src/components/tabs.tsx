@@ -19,7 +19,7 @@ export function Tab({ className, ...props }: ComponentProps<typeof Tabs.Trigger>
   return (
     <Tabs.Trigger
       className={cn(
-        "label py-2.5 text-mute outline-offset-[-2px] data-[state=active]:text-ink data-[state=active]:shadow-[inset_0_-2px_var(--ink)]",
+        "label py-2.5 text-mute outline-offset-2 data-[state=active]:text-ink data-[state=active]:shadow-[inset_0_-2px_var(--ink)]",
         className,
       )}
       {...props}

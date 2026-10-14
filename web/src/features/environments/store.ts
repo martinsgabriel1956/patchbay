@@ -25,6 +25,8 @@ type EnvStore = {
   secrets: Record<string, Secrets>;
   /** Pasta cujo diálogo de configuração está aberto. */
   editing?: string;
+  /** Menu de environments da fita aberto (clique na fita, "Escolher environment"). */
+  picking?: boolean;
   edit: (folder?: string) => void;
   select: (collection: string, env?: string) => void;
   loadSecrets: (collection: string) => Promise<Secrets>;
@@ -124,6 +126,13 @@ function context(
     ...object<Collection>(contents[`${folder}/collection.json`]),
   }));
   return { collection, env, scope: { vars: { ...vars, ...hidden }, display }, parents };
+}
+
+/** Coleção da request e seus environments, fora do React (atalho Ctrl E). */
+export function collectionEnvs(path?: string) {
+  const { tree, contents } = useWorkspace.getState();
+  const collection = pickCollection(path, useEnvironments.getState().last, tree);
+  return { collection, envs: collection ? environmentsOf(contents, collection) : [] };
 }
 
 /** Para enviar: garante os segredos carregados antes de resolver. */

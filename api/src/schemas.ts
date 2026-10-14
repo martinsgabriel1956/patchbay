@@ -35,6 +35,8 @@ export type Auth = z.infer<typeof Auth>;
 export const HttpRequest = z.object({
   id: z.string(),
   name: z.string(),
+  /** Número fixo do canal (Ctrl 1–9, trilho): dado na criação, não muda ao renomear. */
+  channel: z.number().int().positive().optional(),
   kind: z.literal("http"),
   method: z.string(),
   url: z.string(),
@@ -55,6 +57,7 @@ export type HttpRequest = z.infer<typeof HttpRequest>;
 export const RealtimeRequest = z.object({
   id: z.string(),
   name: z.string(),
+  channel: z.number().int().positive().optional(),
   kind: z.enum(["ws", "sse"]),
   url: z.string(),
   headers: z.array(KV),

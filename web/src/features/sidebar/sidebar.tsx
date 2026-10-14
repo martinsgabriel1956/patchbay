@@ -2,8 +2,9 @@
 // Cada pasta é um grupo ("loja / usuários"); cada .json é um canal numerado.
 import type { HistoryEntry, TreeEntry } from "@api/schemas";
 import { DropdownMenu } from "radix-ui";
-import { useEffect, useState } from "react";
-import { useEnvironments } from "@/features/environments/store";
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useState } from "react";
+import { confirm } from "@/components/ui/dialog";
+import { collectionEnvs, useEnvironments } from "@/features/environments/store";
 import { useRealtime } from "@/features/realtime/store";
 import {
   activeTab,
@@ -11,31 +12,24 @@ import {
   fromRequest,
   serialize,
   useRequest,
+  where,
 } from "@/features/request-editor/store";
 import { STAMPS } from "@/features/response-viewer/diagnose";
-import { mod } from "@/lib/utils";
+import { focusUrl, mod, modalOpen } from "@/lib/utils";
 import { ImportDialog } from "./import-dialog";
 import { PathDialog, type PathDialogProps } from "./path-dialog";
-import { files, json, useWorkspace } from "./store";
+import { channelOf, files, groups, json, nextChannel, useWorkspace } from "./store";
 
-type Group = { path: string; requests: TreeEntry[] };
-
-/** Árvore → grupos em ordem de leitura: a raiz (se tiver requests) e cada pasta.
- *  `<coleção>/environments/` não é grupo de requests: é editado em Configurar. */
-function groups(entries: TreeEntry[], path = "", out: Group[] = []): Group[] {
-  const requests = entries
-    .filter((e) => e.type === "file" && e.name.endsWith(".json") && e.name !== "collection.json")
-    .sort((a, b) => baseName(a.name).localeCompare(baseName(b.name))); // "X" antes de "X cópia"
-  if (path || requests.length) out.push({ path, requests });
-  for (const e of entries) {
-    const envDir = e.name === "environments" && e.path.split("/").length === 2;
-    if (e.type === "dir" && !envDir) groups(e.children ?? [], e.path, out);
-  }
-  return out;
-}
-
-/** Requests na ordem do trilho: o canal n é o item n-1 (Ctrl 1–9, palette). */
-export const channels = (tree: TreeEntry[]) => groups(tree).flatMap((g) => g.requests);
+/** Requests salvas pelo número do canal (Ctrl 1–9 abre o canal com aquele número; palette). */
+export const channels = (tree: TreeEntry[], contents: Record<string, unknown>) =>
+  groups(tree, contents)
+    .flatMap((g) => g.requests)
+    .map((entry) => ({
+      path: entry.path,
+      name: entry.name,
+      channel: channelOf(contents[entry.path]),
+    }))
+    .sort((a, b) => (a.channel ?? Infinity) - (b.channel ?? Infinity));
 
 /** Abre o arquivo da request numa aba (ou foca a aba que já o tem). */
 export function openChannel(path: string) {
@@ -48,8 +42,33 @@ const join = (folder: string, name: string) => (folder ? `${folder}/${name}` : n
 const parent = (path: string) => path.split("/").slice(0, -1).join("/");
 const fail = (err: unknown) => useWorkspace.setState({ error: (err as Error).message });
 const reload = () => useWorkspace.getState().load();
+const saved = (path: string) => useWorkspace.setState({ notice: `Salvo em ${path}` });
 /** Abas soltas pelo último Deletar (só o último tem Desfazer). */
 let detached: { key: string; path?: string; saved: string }[] = [];
+
+/** Setas no trilho e no histórico (um Tab entra, outro sai): ↑ ↓ Home End andam entre os itens
+ *  `data-rove`; → abre caminho até o ⋯ da linha, ← volta; Esc devolve o foco à URL. */
+function rove(e: ReactKeyboardEvent<HTMLElement>) {
+  const here = document.activeElement as HTMLElement | null;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    return focusUrl();
+  }
+  if (e.key === "ArrowRight" && here?.dataset.path) {
+    e.preventDefault();
+    return here.parentElement?.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
+  }
+  if (e.key === "ArrowLeft" && here?.hasAttribute("aria-haspopup")) {
+    e.preventDefault();
+    return here.parentElement?.querySelector<HTMLElement>("[data-path]")?.focus();
+  }
+  const items = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-rove]")];
+  const i = here ? items.indexOf(here.closest("li")?.querySelector("[data-rove]") ?? here) : -1;
+  const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+  if (to === undefined || i < 0) return;
+  e.preventDefault();
+  items[Math.max(0, Math.min(items.length - 1, to))]?.focus();
+}
 
 /** Foco num elemento do trilho depois que o React redesenhar (o teclado não cai no <body>). */
 const focusLater = (selector: string) =>
@@ -66,16 +85,18 @@ async function undo({ from, to }: { from: string; to: string }) {
 }
 
 /** Depois de mover/copiar, o "name" de dentro do arquivo acompanha o nome novo. */
-async function syncName(from: string, to: string, isDir: boolean) {
+/** `copy`: a cópia de uma request ganha id próprio (o número, a migração do load dá). */
+async function syncName(from: string, to: string, isDir: boolean, copy = false) {
   const file = isDir ? "/collection.json" : "";
   const content = useWorkspace.getState().contents[from + file];
   if (content && typeof content === "object" && "name" in content) {
-    await files.write(to + file, json({ ...content, name: baseName(to) }));
+    const id = copy && !isDir && "id" in content ? { id: crypto.randomUUID() } : {};
+    await files.write(to + file, json({ ...content, ...id, name: baseName(to) }));
   }
 }
 
 export function Sidebar() {
-  const { tree, contents, history, error, trashed, saving, op, load, loadHistory } = useWorkspace();
+  const { tree, contents, history, saving, op, load, loadHistory } = useWorkspace();
   const activePath = useRequest((s) => activeTab(s).path);
   // Arquivos com WebSocket/SSE aberto (numa aba): o "WS"/"SSE" do canal fica em cord-text.
   const tabs = useRequest((s) => s.tabs);
@@ -83,7 +104,7 @@ export function Sidebar() {
   const live = new Set(tabs.filter((t) => conns[t.key]?.status === "open").map((t) => t.path));
   const [dialog, setDialog] = useState<PathDialogProps | null>(null);
 
-  const all = groups(tree);
+  const all = groups(tree, contents);
   const folders = ["", ...all.filter((g) => g.path).map((g) => g.path)];
   const exists = (path: string) => path in contents || folders.includes(path);
   const ensureFree = (path: string) => {
@@ -104,18 +125,28 @@ export function Sidebar() {
     if (!saving) return;
     useWorkspace.setState({ saving: false });
     const tab = activeTab(useRequest.getState());
-    if (tab.path) {
-      useRequest.getState().save().catch(fail);
+    // Arquivo apagado por fora do app: não recria em silêncio, pergunta onde salvar.
+    if (tab.path && tab.path in useWorkspace.getState().contents) {
+      useRequest
+        .getState()
+        .save()
+        .then(() => saved(tab.path as string), fail);
       return;
     }
     setDialog({
       title: "Salvar request",
       name: tab.name,
-      folder: useWorkspace.getState().tree.find((e) => e.type === "dir")?.path ?? "",
+      // A coleção que o header mostra (a mesma dos environments), não a primeira pasta da árvore.
+      folder:
+        (tab.origin && parent(tab.origin)) ||
+        collectionEnvs(where(tab)).collection ||
+        useWorkspace.getState().tree.find((e) => e.type === "dir")?.path ||
+        "",
       submit: async (name, folder) => {
         const path = join(folder, `${name}.json`);
         if (path in useWorkspace.getState().contents) throw new Error(`Já existe: ${path}`);
         await useRequest.getState().save(path);
+        saved(path);
       },
     });
   }, [saving]);
@@ -127,7 +158,8 @@ export function Sidebar() {
       if (!trashed || e.key.toLowerCase() !== "z" || !(e.ctrlKey || e.metaKey) || e.shiftKey)
         return;
       const el = e.target as HTMLElement;
-      if (el.closest("input, textarea, select, [contenteditable=true], .cm-editor")) return;
+      if (el.closest("input, textarea, select, [contenteditable=true], .cm-editor") || modalOpen())
+        return;
       e.preventDefault();
       undo(trashed).catch(fail);
     };
@@ -159,7 +191,7 @@ export function Sidebar() {
       submit: async (name, folder) => {
         const path = join(folder, `${name}.json`);
         ensureFree(path);
-        const draft = fromRequest({ name, kind });
+        const draft = fromRequest({ name, kind, channel: nextChannel() });
         await files.write(path, serialize(draft));
         await reload();
         useRequest.getState().open(draft, path);
@@ -190,6 +222,7 @@ export function Sidebar() {
         await syncName(path, to, isDir);
         useRequest.getState().moved(path, to);
         await reload();
+        if (!isDir) focusLater(`[data-path="${CSS.escape(to)}"]`);
       },
     });
 
@@ -199,7 +232,7 @@ export function Sidebar() {
     let to = base + ext;
     for (let n = 2; exists(to); n++) to = `${base} ${n}${ext}`;
     await files.copy(path, to);
-    await syncName(path, to, isDir);
+    await syncName(path, to, isDir, true);
     await reload();
   };
 
@@ -209,7 +242,12 @@ export function Sidebar() {
       const inside = all.filter((g) => g.path === path || g.path.startsWith(`${path}/`));
       const n = inside.reduce((sum, g) => sum + g.requests.length, 0);
       const what = n === 1 ? "1 request" : `${n} requests`;
-      if (!window.confirm(`Deletar "${path}" com ${what}? Vai para .trash/.`)) return;
+      const answer = await confirm({
+        title: "Deletar pasta",
+        body: `"${path}" e ${what} vão para .trash/ no workspace. Dá para desfazer logo depois.`,
+        confirm: "Deletar",
+      });
+      if (answer !== "confirm") return;
     }
     const to = await files.remove(path);
     // Abas desse arquivo/pasta ficam soltas; o Desfazer as religa ao arquivo restaurado.
@@ -259,7 +297,9 @@ export function Sidebar() {
     ["Deletar", () => remove(path, true).catch(fail)],
   ];
 
-  let channel = 0;
+  const paths = all.flatMap((g) => g.requests.map((r) => r.path));
+  const stop = activePath && paths.includes(activePath) ? activePath : paths[0];
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-line py-1.5 pr-1.5 pl-3.5">
@@ -283,57 +323,10 @@ export function Sidebar() {
         </span>
       </div>
 
-      {error && (
-        <p role="alert" className="flex gap-2 border-b border-line px-3.5 py-2">
-          <span className="min-w-0 flex-1 font-mono text-[12px] break-words text-prod-text">
-            {error}
-          </span>
-          <button
-            type="button"
-            aria-label="Dispensar erro"
-            onClick={() => useWorkspace.setState({ error: undefined })}
-            className="font-mono text-[14px] text-mute hover:text-ink"
-          >
-            ×
-          </button>
-        </p>
-      )}
-
-      {trashed && (
-        <p
-          role="status"
-          className="flex items-center gap-2 border-b border-line py-1.5 pr-1.5 pl-3.5"
-        >
-          <span
-            className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-2"
-            title={trashed.to}
-          >
-            {baseName(trashed.from)} na .trash/
-          </span>
-          <button
-            id="undo-trash"
-            type="button"
-            title={`Desfazer (${mod("Z")})`}
-            onClick={() => undo(trashed).catch(fail)}
-            className="label shrink-0 px-2 py-1 text-[12px] outline-offset-[-2px] hover:shadow-[inset_0_-2px_var(--ink)]"
-          >
-            Desfazer
-          </button>
-          <button
-            type="button"
-            aria-label="Dispensar aviso"
-            onClick={() => useWorkspace.setState({ trashed: undefined })}
-            className="px-1.5 font-mono text-[14px] text-mute hover:text-ink"
-          >
-            ×
-          </button>
-        </p>
-      )}
-
-      <nav aria-label="Coleções" className="min-h-0 flex-1 overflow-y-auto py-2">
+      <nav aria-label="Coleções" onKeyDown={rove} className="min-h-0 flex-1 overflow-y-auto py-2">
         {all.length === 0 && (
           <p className="px-3.5 text-[15px] text-mute">
-            Nenhuma coleção ainda. Crie uma em “+ Coleção” ou salve a request com Ctrl S.
+            Nenhuma coleção ainda. Crie uma em “+ Coleção” ou salve a request com {mod("S")}.
           </p>
         )}
         {all.map((group) => (
@@ -343,12 +336,12 @@ export function Sidebar() {
                 <h3 className="label min-w-0 flex-1 truncate py-1 text-[12px] text-mute">
                   {group.path.split("/").join(" / ")}
                 </h3>
-                <Menu label={`Ações da pasta ${group.path}`} items={folderMenu(group.path)} />
+                <Menu label={`Ações da pasta ${group.path}`} items={folderMenu(group.path)} rove />
               </div>
             )}
             <ul>
               {group.requests.map((entry) => {
-                channel++;
+                const channel = channelOf(contents[entry.path]);
                 const content = contents[entry.path] as { method?: string; kind?: string } | null;
                 const method = !content
                   ? "JSON?"
@@ -365,7 +358,10 @@ export function Sidebar() {
                       type="button"
                       aria-current={selected ? "true" : undefined}
                       data-path={entry.path}
-                      title={`${entry.path} · F2 renomeia, Delete deleta`}
+                      data-rove
+                      // Um só ponto de Tab no trilho (o canal ativo, ou o primeiro); dentro, setas.
+                      tabIndex={entry.path === stop ? 0 : -1}
+                      title={`${entry.path} · ↑↓ navegam, F2 renomeia, Delete deleta`}
                       onClick={() => openChannel(entry.path)}
                       onKeyDown={(e) => {
                         if (e.key === "F2") renameOrMove(entry.path, false);
@@ -376,7 +372,7 @@ export function Sidebar() {
                       <span
                         className={`font-mono text-[12px] tabular-nums ${selected ? "" : "text-mute"}`}
                       >
-                        {String(channel).padStart(2, "0")}
+                        {channel ? String(channel).padStart(2, "0") : "--"}
                       </span>
                       <span
                         className={`label ${live.has(entry.path) && !selected ? "text-cord-text" : ""}`}
@@ -389,7 +385,11 @@ export function Sidebar() {
                         {entry.name.replace(/\.json$/, "")}
                       </span>
                     </button>
-                    <Menu label={`Ações de ${entry.path}`} items={fileMenu(entry.path)} />
+                    <Menu
+                      label={`Ações de ${entry.path}`}
+                      items={fileMenu(entry.path)}
+                      selected={selected}
+                    />
                   </li>
                 );
               })}
@@ -406,16 +406,129 @@ export function Sidebar() {
   );
 }
 
+/** Faixa sob o header (fora do trilho, que fica recolhido em janela estreita): erro do workspace,
+ *  "Salvo em …" e o Desfazer do último deletar. */
+export function Notices() {
+  const { error, trashed, notice } = useWorkspace();
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => useWorkspace.setState({ notice: undefined }), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const strip = "flex items-center gap-2 border-b border-line py-1 pr-1.5 pl-[18px]";
+  const action =
+    "label shrink-0 px-2 py-1.5 text-[12px] outline-offset-[-2px] hover:shadow-[inset_0_-2px_var(--ink)]";
+  const dismiss =
+    "grid size-8 shrink-0 place-items-center font-mono text-[14px] text-mute outline-offset-[-2px] hover:text-ink";
+  return (
+    <>
+      <div role="status">
+        {notice && (
+          <p className={strip}>
+            <span className="min-w-0 flex-1 truncate py-1.5 font-mono text-[12px] text-ink-2">
+              {notice}
+            </span>
+          </p>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className={strip}>
+          <span className="min-w-0 flex-1 py-1.5 font-mono text-[12px] break-words text-prod-text">
+            {error}
+          </span>
+          <button
+            type="button"
+            aria-label="Dispensar erro"
+            onClick={() => useWorkspace.setState({ error: undefined })}
+            className={dismiss}
+          >
+            ×
+          </button>
+        </p>
+      )}
+      {trashed && (
+        <p role="status" className={strip}>
+          <span
+            className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-2"
+            title={trashed.to}
+          >
+            {baseName(trashed.from)} foi para .trash/
+          </span>
+          <button
+            id="undo-trash"
+            type="button"
+            onClick={() => undo(trashed).catch(fail)}
+            className={action}
+          >
+            Desfazer{" "}
+            <span className="font-mono font-normal tracking-normal normal-case">{mod("Z")}</span>
+          </button>
+          <button
+            type="button"
+            aria-label="Dispensar aviso"
+            onClick={() => useWorkspace.setState({ trashed: undefined })}
+            className={dismiss}
+          >
+            ×
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Mesmo arquivo e mesma URL já abertos numa aba: vai para ela em vez de duplicar. */
+export function openHistory(request: HistoryEntry["request"]) {
+  const { tabs, activate, open } = useRequest.getState();
+  const same = tabs.find(
+    (t) => t.id === request.id && t.method === request.method && t.url === request.url,
+  );
+  if (same) return activate(same.key);
+  // O arquivo de origem (mesmo id), se ainda existe: a cópia herda a coleção e a auth dele.
+  const { contents } = useWorkspace.getState();
+  const origin = Object.keys(contents).find(
+    (p) => (contents[p] as { id?: string } | null)?.id === request.id,
+  );
+  open(fromRequest(request), undefined, origin);
+}
+
+/** Entradas seguidas iguais (mesma request, mesmo resultado) viram uma linha com ×N. */
+const outcome = (e: HistoryEntry) =>
+  `${e.request.method} ${e.request.url} ${e.failed?.reason ?? e.response?.status}`;
+export function collapse(entries: HistoryEntry[]) {
+  const out: { entry: HistoryEntry; count: number }[] = [];
+  for (const entry of entries) {
+    const last = out.at(-1);
+    if (last && outcome(last.entry) === outcome(entry)) last.count++;
+    else out.push({ entry, count: 1 });
+  }
+  return out;
+}
+
 /** Texto, ação e, se tiver, a tecla que faz o mesmo no canal focado. */
 type MenuItem = [string, () => void, string?];
 
-function Menu(props: { label: string; items: (MenuItem | null)[] }) {
+function Menu(props: {
+  label: string;
+  items: (MenuItem | null)[];
+  selected?: boolean;
+  /** ⋯ de pasta entra nas setas do trilho; o de canal se alcança com → a partir do canal. */
+  rove?: boolean;
+}) {
   return (
     // modal={false}: abrir um Dialog a partir do item não deixa o body travado.
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger
         aria-label={props.label}
-        className="shrink-0 px-2 font-mono text-[14px] opacity-40 outline-offset-[-2px] group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+        tabIndex={-1}
+        data-rove={props.rove || undefined}
+        // ↑ ↓ andam no trilho (rove); o Radix abriria o menu com ↓. Enter, espaço e → abrem.
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") e.preventDefault();
+        }}
+        // Sempre visível (sem esperar o hover); na linha selecionada herda a inversão.
+        className={`grid min-h-8 min-w-8 shrink-0 place-items-center self-stretch font-mono text-[14px] outline-offset-[-2px] ${props.selected ? "" : "text-mute group-hover:text-ink focus-visible:text-ink data-[state=open]:text-ink"}`}
       >
         ⋯
       </DropdownMenu.Trigger>
@@ -465,7 +578,7 @@ function splitUrl(url: string) {
   return i < 0 ? { host: rest, path: "/" } : { host: rest.slice(0, i), path: rest.slice(i) };
 }
 
-function when(at: string) {
+export function when(at: string) {
   const date = new Date(at);
   const today = date.toDateString() === new Date().toDateString();
   return today
@@ -473,9 +586,10 @@ function when(at: string) {
     : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-/** Mesmo formato do canal, com a hora no lugar do número; clicar reabre numa aba nova.
+/** Mesmo formato do canal, com a hora no lugar do número; clicar abre (ou foca) a aba.
  *  A linha mostra só o caminho; o host vira um cabeçalho quando muda em relação à linha de cima. */
 function History({ entries }: { entries: HistoryEntry[] }) {
+  const rows = collapse(entries);
   return (
     <section
       aria-label="Histórico"
@@ -485,11 +599,11 @@ function History({ entries }: { entries: HistoryEntry[] }) {
       {entries.length === 0 && (
         <p className="px-3.5 pb-3 text-[15px] text-mute">Nada enviado ainda.</p>
       )}
-      <ul className="min-h-0 overflow-y-auto pb-2">
-        {entries.map((entry, index) => {
+      <ul className="min-h-0 overflow-y-auto pb-2" onKeyDown={rove}>
+        {rows.map(({ entry, count }, index) => {
           const { request, response, failed } = entry;
           const { host, path } = splitUrl(request.url);
-          const newHost = index === 0 || splitUrl(entries[index - 1].request.url).host !== host;
+          const newHost = index === 0 || splitUrl(rows[index - 1].entry.request.url).host !== host;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: entradas não têm id; o histórico só cresce no topo
             <li key={`${entry.at}-${index}`}>
@@ -500,8 +614,10 @@ function History({ entries }: { entries: HistoryEntry[] }) {
               )}
               <button
                 type="button"
-                title={`${request.method} ${request.url}`}
-                onClick={() => useRequest.getState().open(fromRequest(request))}
+                data-rove
+                tabIndex={index === 0 ? 0 : -1}
+                title={`${request.method} ${request.url}${count > 1 ? ` · ${count} vezes seguidas` : ""}`}
+                onClick={() => openHistory(request)}
                 className="grid w-full grid-cols-[38px_42px_minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-1 text-left outline-offset-[-2px] hover:shadow-[inset_2px_0_var(--ink)]"
               >
                 <span className="font-mono text-[12px] text-mute tabular-nums">
@@ -511,17 +627,22 @@ function History({ entries }: { entries: HistoryEntry[] }) {
                   {request.method === "DELETE" ? "DEL" : request.method}
                 </span>
                 <span className="truncate font-mono text-[12px] text-ink-2">{path}</span>
-                {failed ? (
-                  <span className="label border-2 border-prod-text px-2 py-px text-[11px] text-prod-text">
-                    {STAMPS[failed.reason]}
-                  </span>
-                ) : (
-                  <span
-                    className={`font-mono text-[12px] font-semibold tabular-nums ${TONES[Math.floor((response?.status ?? 0) / 100)] ?? "text-ink"}`}
-                  >
-                    {response?.status}
-                  </span>
-                )}
+                <span className="flex items-center gap-1.5">
+                  {count > 1 && (
+                    <span className="font-mono text-[12px] text-mute tabular-nums">×{count}</span>
+                  )}
+                  {failed ? (
+                    <span className="label border-2 border-prod-text px-1.5 text-[11px] text-prod-text">
+                      {STAMPS[failed.reason]}
+                    </span>
+                  ) : (
+                    <span
+                      className={`font-mono text-[12px] font-semibold tabular-nums ${TONES[Math.floor((response?.status ?? 0) / 100)] ?? "text-ink"}`}
+                    >
+                      {response?.status}
+                    </span>
+                  )}
+                </span>
               </button>
             </li>
           );

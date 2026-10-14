@@ -1,6 +1,13 @@
 // Um diálogo para tudo que pede nome (e pasta): salvar, criar, renomear/mover.
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  dialogButton,
+  dialogPrimary,
+} from "@/components/ui/dialog";
 
 export type PathDialogProps = {
   title: string;
@@ -11,7 +18,7 @@ export type PathDialogProps = {
 };
 
 const field =
-  "border border-line bg-bg px-2.5 py-1.5 font-mono text-[14px] text-ink outline-offset-[-2px]";
+  "border border-mute bg-bg px-2.5 py-1.5 font-mono text-[14px] text-ink outline-offset-[-2px]";
 
 function invalid(name: string) {
   if (!name) return "Dê um nome.";
@@ -19,9 +26,6 @@ function invalid(name: string) {
   if (name.startsWith(".")) return "O nome não pode começar com ponto (fica oculto).";
   if (name === "collection") return "“collection” é reservado.";
 }
-
-const button =
-  "label h-[34px] w-fit border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]";
 
 export function PathDialog(props: PathDialogProps & { folders: string[]; onClose: () => void }) {
   const [name, setName] = useState(props.name);
@@ -76,10 +80,10 @@ export function PathDialog(props: PathDialogProps & { folders: string[]; onClose
             </p>
           )}
           <div className="flex gap-2">
-            <button type="submit" className={button}>
+            <button type="submit" className={dialogPrimary}>
               Salvar
             </button>
-            <button type="button" onClick={props.onClose} className={button}>
+            <button type="button" onClick={props.onClose} className={dialogButton}>
               Cancelar
             </button>
           </div>

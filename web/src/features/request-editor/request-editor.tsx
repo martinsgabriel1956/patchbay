@@ -7,10 +7,10 @@ import { useRequestContext } from "@/features/environments/store";
 import { useWorkspace } from "@/features/sidebar/store";
 import { isCurl } from "@/lib/curl";
 import { effectiveAuth } from "@/lib/interpolate";
-import { isMac } from "@/lib/utils";
+import { isMac, modalOpen } from "@/lib/utils";
 import { AuthEditor, authName } from "./auth-editor";
 import { KvTable } from "./kv-table";
-import { activeTab, type BodyType, type Field, useRequest } from "./store";
+import { activeTab, type BodyType, type Field, useRequest, where } from "./store";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 const BODY_TYPES: [BodyType, string][] = [
@@ -39,7 +39,7 @@ export function RequestEditor() {
   const { set, setUrl, setParams, send, cancel } = useRequest.getState();
   const sending = r.result.state === "sending";
   const bodyName = BODY_TYPES.find(([type]) => type === r.bodyType)?.[1];
-  const { scope, parents } = useRequestContext(r.path);
+  const { scope, parents } = useRequestContext(where(r));
   const inheritedFrom = parents.find((p) => p.auth && p.auth.type !== "inherit")?.folder;
   const auth = effectiveAuth(r.auth, parents);
 
@@ -47,6 +47,7 @@ export function RequestEditor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const { send, cancel, ...s } = useRequest.getState();
+      if (modalOpen()) return; // Esc e Ctrl ↵ são do diálogo aberto
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         e.stopPropagation();
@@ -62,7 +63,7 @@ export function RequestEditor() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <form
-        className="m-[18px] mb-3.5 flex h-11 shrink-0 border border-line"
+        className="m-[18px] mb-3.5 flex h-11 shrink-0 border border-mute"
         onSubmit={(e) => {
           e.preventDefault();
           send();

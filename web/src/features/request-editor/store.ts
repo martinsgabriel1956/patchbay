@@ -3,10 +3,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { requestContext } from "@/features/environments/store";
 import { useRealtime } from "@/features/realtime/store";
-import { files, json, useWorkspace } from "@/features/sidebar/store";
+import { channelOf, files, json, nextChannel, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
 import { parseCurl, toCurl } from "@/lib/curl";
 import { prepare, unresolved } from "@/lib/interpolate";
+import { focusUrl } from "@/lib/utils";
 import { paramsFromUrl, urlWithParams } from "./query";
 
 export type BodyType = Body["type"];
@@ -14,7 +15,8 @@ export type Field = KV & { file?: string };
 export type Result =
   | { state: "idle" }
   | { state: "sending" }
-  /** Não enviada: sobrou `{{var}}` sem valor. "Enviar mesmo assim" usa send(true). */
+  /** Não enviada: sobrou `{{var}}` sem valor ("Enviar mesmo assim" usa send(true)) ou, com
+   *  `missing` vazio, faltou a URL. */
   | { state: "blocked"; missing: string[] }
   | { state: "done"; response: HttpResponse }
   | { state: "failed"; reason: "cancelled" | "timeout" | "error"; message: string };
@@ -22,6 +24,8 @@ export type Result =
 export type Draft = {
   id: string;
   name: string;
+  /** Número fixo do canal; só existe depois de salvo no workspace. */
+  channel?: number;
   /** Abas salvas antes da Fase 4 não têm kind: o merge do persist completa com "http". */
   kind: "http" | "ws" | "sse";
   method: string;
@@ -42,7 +46,18 @@ export type Draft = {
 };
 
 /** Aba aberta: o draft em edição, de onde veio no disco e o texto da última gravação. */
-export type Tab = Draft & { key: string; path?: string; saved: string; result: Result };
+export type Tab = Draft & {
+  key: string;
+  path?: string;
+  /** Cópia aberta do histórico: o arquivo de onde veio, para herdar coleção, environment e
+   *  auth dele (e não da última coleção visitada). */
+  origin?: string;
+  saved: string;
+  result: Result;
+};
+
+/** O arquivo que define o contexto da aba (variáveis, auth herdada, pasta para salvar). */
+export const where = (tab: { path?: string; origin?: string }) => tab.path ?? tab.origin;
 
 type RequestStore = {
   tabs: Tab[];
@@ -59,10 +74,12 @@ type RequestStore = {
   importCurl: (cmd: string) => void;
   /** A aba ativa resolvida (vars, auth em header) como comando curl. */
   exportCurl: () => Promise<string>;
-  open: (draft: Draft, path?: string) => void;
+  open: (draft: Draft, path?: string, origin?: string) => void;
   newTab: (kind?: Draft["kind"]) => void;
   activate: (key: string) => void;
   close: (key: string) => void;
+  /** Ctrl Shift T: reabre a última aba fechada (rascunho incluso), nesta sessão. */
+  reopen: () => void;
   save: (path?: string) => Promise<void>;
   /** O arquivo (ou pasta) `from` virou `to` no disco. */
   moved: (from: string, to: string) => void;
@@ -97,6 +114,7 @@ export function fromRequest(r: AnyRequest & { kind?: string }): Draft {
   return {
     id: r.id ?? d.id,
     name: r.name ?? d.name,
+    channel: r.channel,
     kind: d.kind,
     method: r.method ?? d.method,
     url: r.url ?? "",
@@ -138,6 +156,7 @@ export function toRequest(d: Draft): HttpRequest {
   return {
     id: d.id,
     name: d.name,
+    channel: d.channel,
     kind: "http",
     method: d.method,
     url: d.url,
@@ -153,6 +172,7 @@ export function toRequest(d: Draft): HttpRequest {
 export const toRealtime = (d: Draft): RealtimeRequest => ({
   id: d.id,
   name: d.name,
+  channel: d.channel,
   kind: d.kind === "sse" ? "sse" : "ws",
   url: d.url,
   headers: d.headers.map(kv),
@@ -175,6 +195,8 @@ const newTab = (draft: Draft, path?: string): Tab => ({
 });
 
 const inflight = new Map<string, AbortController>();
+/** Abas fechadas nesta sessão, a última no fim (Ctrl Shift T). */
+const closed: Tab[] = [];
 const first = newTab(blank());
 
 export const useRequest = create<RequestStore>()(
@@ -197,11 +219,15 @@ export const useRequest = create<RequestStore>()(
 
         send: async (force = false) => {
           const tab = current();
-          if (tab.kind !== "http" || tab.result.state === "sending" || !tab.url.trim()) return;
+          if (tab.kind !== "http" || tab.result.state === "sending") return;
+          if (!tab.url.trim()) {
+            patch(tab.key, { result: { state: "blocked", missing: [] } });
+            return focusUrl();
+          }
           // Variáveis e auth resolvidas aqui; o arquivo continua com os {{var}}.
           let req: HttpRequest;
           try {
-            const { scope, parents } = await requestContext(tab.path);
+            const { scope, parents } = await requestContext(where(tab));
             req = prepare(toRequest(tab), scope.vars, parents);
           } catch (err) {
             const message = (err as Error).message;
@@ -245,15 +271,15 @@ export const useRequest = create<RequestStore>()(
         },
         exportCurl: async () => {
           const tab = current();
-          const { scope, parents } = await requestContext(tab.path);
+          const { scope, parents } = await requestContext(where(tab));
           return toCurl(prepare(toRequest(tab), scope.vars, parents));
         },
 
-        open: (draft, path) => {
+        open: (draft, path, origin) => {
           const { tabs } = get();
           const existing = path && tabs.find((t) => t.path === path);
           if (existing) return setState({ active: existing.key });
-          const tab = newTab(draft, path);
+          const tab = { ...newTab(draft, path), origin };
           // Uma aba "Nova request" intocada é substituída, como o preview de um editor.
           const only = tabs.length === 1 && !tabs[0].path && !isDirty(tabs[0]) && !tabs[0].url;
           setState({ tabs: only ? [tab] : [...tabs, tab], active: tab.key });
@@ -263,11 +289,22 @@ export const useRequest = create<RequestStore>()(
           setState((s) => ({ tabs: [...s.tabs, tab], active: tab.key }));
         },
         activate: (key) => setState({ active: key }),
+        reopen: () => {
+          const tab = closed.pop();
+          if (!tab) return;
+          const existing = tab.path && get().tabs.find((t) => t.path === tab.path);
+          if (existing) return setState({ active: existing.key });
+          setState((s) => ({ tabs: [...s.tabs, tab], active: tab.key }));
+        },
         close: (key) => {
           inflight.get(key)?.abort();
           useRealtime.getState().drop(key);
           const { tabs, active } = get();
           const index = tabs.findIndex((t) => t.key === key);
+          const tab = tabs[index];
+          // Aba vazia e intocada não vale reabrir.
+          if (tab && (tab.path || tab.url || isDirty(tab)))
+            closed.push({ ...tab, result: { state: "idle" } });
           const rest = tabs.filter((t) => t.key !== key);
           if (rest.length === 0) rest.push(newTab(blank()));
           const next = key === active ? rest[Math.min(index, rest.length - 1)].key : active;
@@ -279,9 +316,17 @@ export const useRequest = create<RequestStore>()(
           const target = path ?? tab.path;
           if (!target) return;
           const name = baseName(target);
-          const text = serialize({ ...tab, name });
+          // Mesmo arquivo: o número fica (migrado com a aba aberta, vem do disco). Arquivo novo
+          // (aba nova, cópia do histórico) ganha número e id próprios: nunca os da origem.
+          const { contents } = useWorkspace.getState();
+          const same = target === tab.path;
+          const channel = same
+            ? (tab.channel ?? channelOf(contents[target]) ?? nextChannel(contents))
+            : nextChannel(contents);
+          const id = same ? tab.id : crypto.randomUUID();
+          const text = serialize({ ...tab, id, name, channel });
           await files.write(target, text);
-          patch(tab.key, { path: target, name, saved: text });
+          patch(tab.key, { path: target, id, name, channel, saved: text });
           await useWorkspace.getState().load();
         },
 

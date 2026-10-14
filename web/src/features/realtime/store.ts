@@ -106,7 +106,15 @@ export const useRealtime = create<RealtimeStore>()((set, get) => {
             add(key, { dir: "event", kind: "error", data: event.data, at: event.at });
           } else {
             const { code, reason } = event.data;
-            closed(key, `Fechada · ${code}${reason ? ` ${reason}` : ""}`, event.at);
+            // O motivo que só repete o erro da linha de cima (falha do SSE) não vale outra vez.
+            const repeated = get().conns[key]?.log.at(-1)?.data === reason;
+            const text =
+              repeated || !reason
+                ? "Fechada"
+                : code === 1000
+                  ? `Fechada · ${reason}`
+                  : `Fechada · ${code} ${reason}`;
+            closed(key, text, event.at);
           }
         };
         // Canal com a api fechou: fim da sessão (desconectar, upstream fechou ou api caiu).

@@ -7,9 +7,9 @@ import { VarInput } from "@/components/var-input";
 import { useRequestContext } from "@/features/environments/store";
 import { authName } from "@/features/request-editor/auth-editor";
 import { KvTable } from "@/features/request-editor/kv-table";
-import { activeTab, toRealtime, useRequest } from "@/features/request-editor/store";
+import { activeTab, toRealtime, useRequest, where } from "@/features/request-editor/store";
 import { effectiveAuth } from "@/lib/interpolate";
-import { isMac } from "@/lib/utils";
+import { isMac, mod, modalOpen } from "@/lib/utils";
 import { useRealtime } from "./store";
 
 const count = (rows: { key: string; enabled: boolean }[]) =>
@@ -21,7 +21,7 @@ export function RealtimeEditor() {
   const status = useRealtime((s) => s.conns[r.key]?.status ?? "closed");
   const draft = useRealtime((s) => s.drafts[r.key] ?? "");
   const { connect, disconnect, send, setDraft } = useRealtime.getState();
-  const { scope, parents } = useRequestContext(r.path);
+  const { scope, parents } = useRequestContext(where(r));
   const inheritedFrom = parents.find((p) => p.auth && p.auth.type !== "inherit")?.folder;
   const auth = effectiveAuth({ type: "inherit" }, parents);
   const live = status !== "closed";
@@ -31,11 +31,15 @@ export function RealtimeEditor() {
   // Ctrl+Enter envia a mensagem de qualquer lugar (inclusive de dentro do CodeMirror).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+      if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey) || modalOpen()) return;
       e.preventDefault();
       e.stopPropagation();
       const tab = activeTab(useRequest.getState());
-      useRealtime.getState().send(tab.key, tab.path);
+      const rt = useRealtime.getState();
+      // Desconectado (e sempre no SSE, que não envia): Ctrl ↵ conecta, como o Enter na URL.
+      const open = rt.conns[tab.key]?.status === "open";
+      if (open && tab.kind === "ws") rt.send(tab.key, where(tab));
+      else if (!open && tab.url.trim()) rt.connect(tab.key, toRealtime(tab), where(tab));
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -44,10 +48,10 @@ export function RealtimeEditor() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <form
-        className="m-[18px] mb-3.5 flex h-11 shrink-0 border border-line"
+        className="m-[18px] mb-3.5 flex h-11 shrink-0 border border-mute"
         onSubmit={(e) => {
           e.preventDefault();
-          if (r.url.trim()) connect(r.key, toRealtime(r), r.path);
+          if (r.url.trim()) connect(r.key, toRealtime(r), where(r));
         }}
       >
         <span
@@ -88,9 +92,12 @@ export function RealtimeEditor() {
         ) : (
           <button
             type="submit"
-            className="label flex shrink-0 items-center bg-cord px-4 focus-visible:outline-matte focus-visible:outline-offset-[-4px] text-[16px] text-matte"
+            className="label flex shrink-0 items-center gap-2.5 bg-cord px-4 focus-visible:outline-matte focus-visible:outline-offset-[-4px] text-[16px] text-matte"
           >
             Conectar
+            <span className="font-mono text-[12px] font-normal normal-case tracking-normal">
+              {isMac ? "⌘↵" : "Ctrl ↵"}
+            </span>
           </button>
         )}
       </form>
@@ -115,14 +122,14 @@ export function RealtimeEditor() {
             <button
               type="button"
               disabled={status !== "open" || !draft}
-              onClick={() => send(r.key, r.path)}
-              className="label h-[34px] border border-mute px-3.5 text-[12px] enabled:hover:shadow-[inset_0_-2px_var(--ink)] disabled:text-mute"
+              onClick={() => send(r.key, where(r))}
+              className="label h-[34px] shrink-0 border border-mute px-3.5 text-[12px] whitespace-nowrap enabled:hover:shadow-[inset_0_-2px_var(--ink)] disabled:text-mute"
             >
               Enviar mensagem
             </button>
-            <span className="kbd">{isMac ? "⌘↵" : "Ctrl ↵"}</span>
+            <span className="kbd shrink-0 whitespace-nowrap">{isMac ? "⌘↵" : "Ctrl ↵"}</span>
             {status !== "open" && (
-              <span className="text-[15px] text-mute">Conecte para enviar.</span>
+              <span className="text-[15px] text-mute">Desconectado: {mod("↵")} conecta.</span>
             )}
           </div>
         </TabPanel>

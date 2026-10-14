@@ -49,6 +49,24 @@ export function diagnose(reason: FailReason, message: string, url = ""): Diagnos
       fix: "url",
     };
   }
+  if (/EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|Connect Timeout/i.test(message))
+    return {
+      hint: "O host não respondeu à conexão (inalcançável ou bloqueado). Confira o IP, a VPN ou o firewall.",
+      fix: "url",
+    };
+  // Realtime: o servidor respondeu, mas não abriu o WebSocket / stream SSE.
+  const status = message.match(/Unexpected server response: (\d{3})|^HTTP (\d{3})/);
+  if (status)
+    return {
+      hint: `O servidor respondeu HTTP ${status[1] ?? status[2]} em vez de abrir a conexão. Confira o caminho, a auth e os headers.`,
+      fix: "url",
+    };
+  const type = message.match(/expected Content-Type text\/event-stream, got "([^"]*)"/);
+  if (type)
+    return {
+      hint: `Esse endpoint não é um stream SSE: respondeu ${type[1] || "sem Content-Type"}. Confira o caminho.`,
+      fix: "url",
+    };
   if (/certificate|self[- ]signed|CERT_|SSL/i.test(message))
     return {
       hint: "Certificado TLS recusado. Em dev, marque Opções › Aceitar certificado TLS inválido.",
