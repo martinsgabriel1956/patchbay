@@ -1,13 +1,15 @@
 // Proxy WebSocket e SSE (PLANNING §6 › WS /realtime). Uma conexão web↔api por sessão: a 1ª
 // mensagem abre o upstream, as seguintes vão para ele (só WS), e fechar de qualquer lado fecha o
 // outro. SSE: GET com stream, cada evento vira um "message". Sem reconexão automática.
+// `{ kind: "watch" }` como 1ª mensagem faz da conexão o aviso de mudanças no workspace (watch.ts).
 
 import { request } from "undici";
 import WebSocket, { type RawData } from "ws";
 import { z } from "zod";
-import { type RealtimeEvent, RealtimeStart } from "../schemas.js";
+import { type RealtimeEvent, RealtimeStart, type WorkspaceEvent } from "../schemas.js";
 import { agent, headerPairs } from "./http.js";
 import { sseParser } from "./sse.js";
+import { watch } from "./watch.js";
 
 type Event = RealtimeEvent extends infer E ? (E extends unknown ? Omit<E, "at"> : never) : never;
 type Emit = (event: Event) => void;
@@ -63,6 +65,7 @@ async function sse(start: RealtimeStart, emit: Emit, signal: AbortSignal) {
 export function relay(client: WebSocket) {
   let upstream: WebSocket | undefined;
   let stream: AbortController | undefined;
+  let watching = false;
   const emit = (event: Event) => {
     if (client.readyState === WebSocket.OPEN)
       client.send(JSON.stringify({ ...event, at: new Date().toISOString() }));
@@ -81,6 +84,7 @@ export function relay(client: WebSocket) {
   });
 
   client.on("message", (data: RawData, isBinary: boolean) => {
+    if (watching) return;
     if (stream) return emit({ type: "error", data: "SSE is read-only: messages are not sent" });
     if (upstream) {
       if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
@@ -89,7 +93,18 @@ export function relay(client: WebSocket) {
     }
     let start: RealtimeStart;
     try {
-      const parsed = RealtimeStart.safeParse(JSON.parse(data.toString()));
+      const message = JSON.parse(data.toString());
+      // { kind: "watch" }: em vez de upstream, avisa quando o workspace muda no disco.
+      if (message?.kind === "watch") {
+        watching = true;
+        const stop = watch((paths) => {
+          if (client.readyState === WebSocket.OPEN)
+            client.send(JSON.stringify({ type: "changed", paths } satisfies WorkspaceEvent));
+        });
+        client.on("close", stop);
+        return;
+      }
+      const parsed = RealtimeStart.safeParse(message);
       if (!parsed.success) return abort(z.prettifyError(parsed.error));
       start = parsed.data;
     } catch {

@@ -85,6 +85,10 @@ export type RealtimeEvent = { at: string } & (
   | { type: "close"; data: { code: number; reason: string } }
 );
 
+/** Pelo /realtime aberto com `{ kind: "watch" }`: paths (relativos) que mudaram no disco fora da
+ *  api. Um diretório na lista vale por tudo dentro dele. */
+export type WorkspaceEvent = { type: "changed"; paths: string[] };
+
 export const Environment = z.object({ name: z.string(), vars: z.array(KV) });
 export type Environment = z.infer<typeof Environment>;
 

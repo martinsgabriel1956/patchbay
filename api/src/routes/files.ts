@@ -5,6 +5,7 @@ import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { fail } from "../lib/http.js";
+import { own } from "../lib/watch.js";
 import { exists, readHistory, resolve, trash, tree, write } from "../lib/workspace.js";
 
 const ERRNO: Record<string, number> = {
@@ -34,6 +35,19 @@ export function filesRoute(app: FastifyInstance) {
       const e = err as Error & { status?: number; statusCode?: number; code?: string };
       reply.code(e.status ?? e.statusCode ?? ERRNO[e.code ?? ""] ?? 500).send({ error: e.message });
     });
+
+    // O que a web escreve não volta para ela como "mudou no disco" (lib/watch.ts).
+    const mine = async (req: { method: string; query: unknown; body: unknown }) => {
+      if (req.method === "GET") return;
+      const { path: rel } = (req.query ?? {}) as { path?: unknown };
+      const { from, to } = ((typeof req.body === "object" && req.body) || {}) as {
+        from?: unknown;
+        to?: unknown;
+      };
+      own(...[rel, from, to].filter((p): p is string => typeof p === "string"));
+    };
+    scope.addHook("preHandler", mine);
+    scope.addHook("onResponse", mine);
 
     scope.get("/files/tree", () => tree());
 

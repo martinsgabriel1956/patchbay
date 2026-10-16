@@ -15,6 +15,7 @@ import {
   where,
 } from "@/features/request-editor/store";
 import { STAMPS } from "@/features/response-viewer/diagnose";
+import { realtime } from "@/lib/api-client";
 import { focusUrl, mod, modalOpen } from "@/lib/utils";
 import { ImportDialog } from "./import-dialog";
 import { PathDialog, type PathDialogProps } from "./path-dialog";
@@ -43,6 +44,42 @@ const parent = (path: string) => path.split("/").slice(0, -1).join("/");
 const fail = (err: unknown) => useWorkspace.setState({ error: (err as Error).message });
 const reload = () => useWorkspace.getState().load();
 const saved = (path: string) => useWorkspace.setState({ notice: `Salvo em ${path}` });
+
+/** O disco é a verdade: ouve as mudanças de fora (git pull, editor) pelo /realtime da api e
+ *  recarrega a árvore e as abas. Se a api cair, tenta de novo a cada 2s. Devolve o "parar". */
+function watchDisk() {
+  let ws: WebSocket | undefined;
+  let retry: ReturnType<typeof setTimeout> | undefined;
+  let stopped = false;
+  let reconnect = false;
+  const connect = async () => {
+    const socket = await realtime();
+    if (stopped) return socket.close();
+    ws = socket;
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ kind: "watch" }));
+      // O que mudou enquanto ninguém ouvia (app fechado, api fora). A 1ª carga da árvore é do Sidebar.
+      if (reconnect) reload();
+      reconnect = true;
+      useRequest.getState().diskChanged();
+    };
+    // { type: "changed", paths }: recarrega tudo (a árvore relê todos os .json de qualquer jeito).
+    socket.onmessage = () => {
+      reload();
+      useRequest.getState().diskChanged();
+    };
+    socket.onclose = () => {
+      if (!stopped) retry = setTimeout(connect, 2000);
+    };
+  };
+  connect();
+  return () => {
+    stopped = true;
+    clearTimeout(retry);
+    ws?.close();
+  };
+}
+
 /** Abas soltas pelo último Deletar (só o último tem Desfazer). */
 let detached: { key: string; path?: string; saved: string }[] = [];
 
@@ -111,6 +148,7 @@ export function Sidebar() {
     if (exists(path)) throw new Error(`Já existe: ${path}`);
   };
 
+  useEffect(watchDisk, []);
   useEffect(() => {
     load();
     loadHistory();
@@ -407,9 +445,11 @@ export function Sidebar() {
 }
 
 /** Faixa sob o header (fora do trilho, que fica recolhido em janela estreita): erro do workspace,
- *  "Salvo em …" e o Desfazer do último deletar. */
+ *  "Salvo em …", a aba que mudou no disco e o Desfazer do último deletar. */
 export function Notices() {
   const { error, trashed, notice } = useWorkspace();
+  // Aba ativa com alteração não salva e arquivo mudado no disco: recarregar ou manter.
+  const stale = useRequest((s) => (activeTab(s).changedOnDisk ? activeTab(s) : undefined));
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => useWorkspace.setState({ notice: undefined }), 3000);
@@ -444,6 +484,30 @@ export function Notices() {
             className={dismiss}
           >
             ×
+          </button>
+        </p>
+      )}
+      {stale && (
+        <p role="status" className={strip}>
+          <span
+            className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink-2"
+            title={stale.path}
+          >
+            {stale.name} mudou no disco
+          </span>
+          <button
+            type="button"
+            onClick={() => useRequest.getState().reload(stale.key).catch(fail)}
+            className={action}
+          >
+            Recarregar do disco
+          </button>
+          <button
+            type="button"
+            onClick={() => useRequest.getState().keep(stale.key)}
+            className={action}
+          >
+            Manter as minhas
           </button>
         </p>
       )}

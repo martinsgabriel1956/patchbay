@@ -168,6 +168,8 @@ Uma conexão WebSocket web↔api por sessão realtime:
 
 SSE passa pelo mesmo canal: a api faz o GET com stream, separa os blocos `event:`/`data:` e repassa como `message`. Assim a mesma UI de log serve para os dois.
 
+Mudanças no disco também: com `{ kind: "watch" }` como 1ª mensagem, a api observa o workspace (um `fs.watch` por pasta, debounce de 150ms, sem ocultos nem o que ela mesma escreveu) e manda `{ type: "changed", paths }`. A web recarrega a árvore e as abas: aba limpa recarrega calada; com alteração não salva fica marcada (recarregar ou manter); arquivo apagado vira rascunho.
+
 ### Arquivos
 - `GET /files/tree`: árvore da pasta de trabalho (sem ocultos: `.git`, `.trash`, `.history.jsonl`)
 - `GET /files?path=`: lê um arquivo (texto)
