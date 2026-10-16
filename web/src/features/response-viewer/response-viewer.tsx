@@ -239,6 +239,7 @@ function Idle() {
 
 function Response({ response }: { response: HttpResponse }) {
   const [pretty, setPretty] = useState(true);
+  const [phases, setPhases] = useState(false);
   const type = response.headers.find(([key]) => key.toLowerCase() === "content-type")?.[1] ?? "";
 
   return (
@@ -269,13 +270,32 @@ function Response({ response }: { response: HttpResponse }) {
       </div>
 
       <dl className="flex flex-wrap gap-x-4 px-[18px] py-3.5 font-mono text-[13px] tabular-nums">
-        <Meta label="tempo" value={`${response.timeMs} ms`} />
+        {response.timings ? (
+          <div className="flex gap-1.5">
+            <dt className="text-mute">tempo</dt>
+            <dd>
+              <button
+                type="button"
+                aria-expanded={phases}
+                aria-controls="response-timings"
+                title="Fases: DNS, TCP, TLS, TTFB, download"
+                onClick={() => setPhases(!phases)}
+                className="font-medium text-ink underline decoration-mute decoration-dashed underline-offset-4"
+              >
+                {response.timeMs} ms
+              </button>
+            </dd>
+          </div>
+        ) : (
+          <Meta label="tempo" value={`${response.timeMs} ms`} />
+        )}
         <Meta label="tamanho" value={bytes(response.sizeBytes)} />
         {response.decodedSizeBytes !== response.sizeBytes && (
           <Meta label="descomprimido" value={bytes(response.decodedSizeBytes)} />
         )}
         {response.truncated && <Meta label="truncado em" value="5 MB" />}
       </dl>
+      {phases && response.timings && <Timings timings={response.timings} />}
 
       <TabsRoot defaultValue="body" className="flex min-h-0 flex-1 flex-col">
         <TabList aria-label="Partes da resposta">
@@ -341,6 +361,51 @@ function JarCookies() {
             </Fragment>
           ))}
         </dl>
+      )}
+    </div>
+  );
+}
+
+const PHASES = [
+  ["redirect", "redirects"],
+  ["dns", "dns"],
+  ["tcp", "tcp"],
+  ["tls", "tls"],
+  ["ttfb", "ttfb"],
+  ["download", "download"],
+] as const;
+
+/** Cascata das fases: cada barra começa onde a anterior acabou, em escala do total. */
+function Timings({ timings }: { timings: NonNullable<HttpResponse["timings"]> }) {
+  let offset = 0;
+  return (
+    <div id="response-timings" className="grid gap-2 px-[18px] pb-3.5">
+      <dl className="grid max-w-[480px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
+        {PHASES.map(([key, label]) => {
+          const value = timings[key];
+          if (key === "redirect" && value === undefined) return null;
+          const left = (offset / timings.total) * 100;
+          offset += value ?? 0;
+          return (
+            <Fragment key={key}>
+              <dt className="text-mute">{label}</dt>
+              <dd className="relative h-[9px] border-l border-line">
+                {value !== undefined && (
+                  <span
+                    className="absolute inset-y-0 min-w-px bg-ink"
+                    style={{ left: `${left}%`, width: `${(value / timings.total) * 100}%` }}
+                  />
+                )}
+              </dd>
+              <dd className="text-right text-ink">
+                {value === undefined ? "—" : `${number.format(value)} ms`}
+              </dd>
+            </Fragment>
+          );
+        })}
+      </dl>
+      {timings.tcp === undefined && (
+        <p className="text-[13px] text-mute">Conexão reaproveitada: sem DNS, TCP nem TLS.</p>
       )}
     </div>
   );
