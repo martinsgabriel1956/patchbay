@@ -13,6 +13,7 @@ export const SHORTCUTS: [string, string][] = [
   [mod("Tab"), "Próxima aba (com Shift, a anterior)"],
   [mod("1–9"), "Abrir o canal pelo número (fixo, gravado no arquivo)"],
   [mod("L"), "Ir para a URL"],
+  [mod("F"), "Buscar no body da resposta (num editor, nele; Enter e F3 andam)"],
   [mod("E"), "Escolher o environment (com Shift, pula para o próximo)"],
   [mod("B"), "Mostrar ou ocultar coleções (e ir até elas)"],
   [mod("K"), "Command palette: o resto, e busca no histórico"],
@@ -48,8 +49,8 @@ export function ShortcutList() {
       </p>
       <p className="max-w-[64ch] text-[15px] text-ink-2">
         Só na palette: nova request WebSocket ou SSE, copiar como cURL, importar do Postman,
-        Insomnia ou OpenAPI, duplicar, nova pasta, tema. Colar um comando curl na URL preenche a
-        request.
+        Insomnia ou OpenAPI, duplicar, nova pasta, tema, filtrar o JSON da resposta por caminho.
+        Colar um comando curl na URL preenche a request.
       </p>
     </div>
   );

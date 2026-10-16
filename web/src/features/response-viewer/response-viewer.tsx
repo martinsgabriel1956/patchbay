@@ -1,5 +1,7 @@
 import type { HttpResponse, JarCookie } from "@api/schemas";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { openSearchPanel } from "@codemirror/search";
+import { EditorView } from "@codemirror/view";
+import { Fragment, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
 import { ShortcutList } from "@/components/shortcuts";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
@@ -11,6 +13,7 @@ import { useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
 import { focusUrl, isMac, mod } from "@/lib/utils";
 import { diagnose, STAMPS } from "./diagnose";
+import { pick } from "./json-path";
 
 // Classe de status = cor da fita (DESIGN.md › Secondary), sempre na variante *-text.
 const TONES: Record<number, string> = {
@@ -52,6 +55,21 @@ function EnvActions() {
       </Action>
     </>
   );
+}
+
+/** Ctrl F fora de um editor: abre a busca no body da resposta, se houver um na tela. */
+export function searchResponse() {
+  const dom = document.querySelector<HTMLElement>("#response .cm-editor");
+  const view = dom && EditorView.findFromDOM(dom);
+  if (view) openSearchPanel(view);
+  else useWorkspace.setState({ notice: "Nenhum body de resposta para buscar." });
+}
+
+/** Foco no filtro do JSON (palette). Só existe com resposta JSON em Pretty. */
+export function focusResponseFilter() {
+  const input = document.getElementById("response-filter");
+  if (input) input.focus();
+  else useWorkspace.setState({ notice: "O filtro só aparece com resposta JSON, em Pretty." });
 }
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
@@ -431,14 +449,29 @@ function Body({
 }) {
   const { body, isBinary } = response;
   const mime = type.split(";")[0].trim();
-  const json = useMemo(() => {
+  // Embrulhado: o próprio JSON pode ser `null`.
+  const parsed = useMemo(() => {
     if (isBinary || !(/json/i.test(mime) || /^\s*[[{]/.test(body))) return null;
     try {
-      return JSON.stringify(JSON.parse(body), null, 2);
+      return { value: JSON.parse(body) as unknown };
     } catch {
       return null; // inválido ou truncado: fica o texto cru
     }
   }, [body, isBinary, mime]);
+  const json = useMemo(() => parsed && JSON.stringify(parsed.value, null, 2), [parsed]);
+  const [filter, setFilter] = useState("");
+  const path = useDeferredValue(filter.trim());
+  const slice = useMemo(() => {
+    if (!parsed || !path) return null;
+    try {
+      const value = pick(parsed.value, path);
+      return value === undefined
+        ? { error: `Nada em ${path}.` }
+        : { text: JSON.stringify(value, null, 2) };
+    } catch (err) {
+      return { error: `${(err as Error).message}.` };
+    }
+  }, [parsed, path]);
 
   if (pretty && mime.startsWith("image/")) {
     const src = isBinary
@@ -458,11 +491,31 @@ function Body({
     );
   }
   if (!body) return <p className="p-[18px] text-[15px] text-mute">Resposta sem body.</p>;
-  return (
-    <CodeEditor
-      label="Body da resposta"
-      language={pretty && json !== null ? "json" : undefined}
-      value={pretty && json !== null ? json : body}
-    />
-  );
+  if (pretty && json !== null)
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex shrink-0 items-center border-b border-line px-[18px] py-2">
+          <input
+            id="response-filter"
+            type="search"
+            spellCheck={false}
+            aria-label="Filtrar o JSON por caminho"
+            placeholder="Filtrar: data.items[0].name, items[*].id"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="min-w-0 flex-1 border border-line bg-bg px-2.5 py-1 font-mono text-[13px] text-ink outline-offset-[-2px] placeholder:text-mute"
+          />
+        </div>
+        {slice?.error ? (
+          <p role="status" className="p-[18px] font-mono text-[13px] text-mute">
+            {slice.error}
+          </p>
+        ) : (
+          <div className="min-h-0 flex-1">
+            <CodeEditor label="Body da resposta" language="json" value={slice?.text ?? json} />
+          </div>
+        )}
+      </div>
+    );
+  return <CodeEditor label="Body da resposta" value={body} />;
 }
