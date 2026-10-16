@@ -1,7 +1,8 @@
 // Configuração de uma coleção (pasta do topo) ou pasta: environments, variáveis da coleção,
-// auth e headers herdados. Edita em memória; "Salvar" grava só os arquivos que mudaram.
+// auth, headers e rede (proxy, certificado de cliente) herdados. Edita em memória; "Salvar" grava
+// só os arquivos que mudaram.
 // Segredos vão para <coleção>/.env.local.json (gitignored), nunca para os arquivos versionados.
-import type { Auth, KV } from "@api/schemas";
+import type { Auth, KV, Network } from "@api/schemas";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import {
@@ -12,7 +13,7 @@ import {
   DialogTitle,
   dialogPrimary,
 } from "@/components/ui/dialog";
-import { AuthEditor } from "@/features/request-editor/auth-editor";
+import { AuthEditor, Field } from "@/features/request-editor/auth-editor";
 import { KvTable } from "@/features/request-editor/kv-table";
 import { files, json, useWorkspace } from "@/features/sidebar/store";
 import {
@@ -105,9 +106,10 @@ function Editor({
   const [vars, setVars] = useState<KV[]>(Array.isArray(col.vars) ? col.vars : []);
   const [headers, setHeaders] = useState<KV[]>(Array.isArray(col.headers) ? col.headers : []);
   const [auth, setAuth] = useState<Auth>(col.auth ?? { type: top ? "none" : "inherit" });
+  const [network, setNetwork] = useState<Network>(col.network ?? {});
   const [error, setError] = useState("");
   const env = envs[selected];
-  const draft = json({ envs, vars, headers, auth });
+  const draft = json({ envs, vars, headers, auth, network });
   const [initial] = useState(draft);
   dirty.current = draft !== initial;
   const patchEnv = (patch: Partial<EnvDraft>) =>
@@ -124,6 +126,11 @@ function Editor({
     const names = envs.map((e) => e.name.trim());
     const problem = invalid(names);
     if (problem) return setError(problem);
+    // A passphrase da chave é segredo: o collection.json é versionado, então só aceita {{var}}.
+    if (network.passphrase && !/^\{\{\s*[^{}\s]+\s*\}\}$/.test(network.passphrase.trim()))
+      return setError(
+        "A passphrase precisa ser uma variável, como {{passphrase}}, definida nos segredos.",
+      );
     const drafts = envs.map((e, i) => ({ ...e, name: names[i] }));
 
     // collection.json: chaves existentes ficam onde estão; as novas entram em ordem fixa.
@@ -134,7 +141,11 @@ function Editor({
       headers: clean(headers),
     };
     if (top) next.vars = clean(vars);
-    const untouched = !(colPath in contents) && auth.type === "inherit" && !headers.length;
+    const filled = Object.entries(network).filter(([, v]) => v?.trim());
+    if (filled.length) next.network = Object.fromEntries(filled);
+    else delete next.network;
+    const untouched =
+      !(colPath in contents) && auth.type === "inherit" && !headers.length && !filled.length;
     if (!untouched && json(next) !== json(contents[colPath]))
       await files.write(colPath, json(next));
 
@@ -189,6 +200,7 @@ function Editor({
             {top && <Tab value="vars">Variáveis</Tab>}
             <Tab value="auth">Auth</Tab>
             <Tab value="headers">Headers</Tab>
+            <Tab value="network">Rede</Tab>
           </TabList>
 
           {top && (
@@ -285,6 +297,35 @@ function Editor({
               (ou uma pasta mais próxima) defina um header com o mesmo nome.
             </p>
             <KvTable label="Headers herdados" rows={headers} onChange={setHeaders} />
+          </TabPanel>
+          <TabPanel value="network" className="grid max-w-xl content-start gap-4 px-0">
+            <p className={note}>
+              {top ? "" : "Campo vazio herda da pasta acima. "}Use{" "}
+              <code className="font-mono text-[13px] text-ink">{"{{proxy}}"}</code> para mudar por
+              environment. Sem proxy em nenhum lugar, valem HTTP_PROXY, HTTPS_PROXY e NO_PROXY.
+            </p>
+            {(
+              [
+                ["proxy", "Proxy", "http://usuario:senha@host:3128"],
+                ["noProxy", "Sem proxy para", "localhost, .interno"],
+                ["cert", "Certificado do cliente (PEM)", "certs/cliente.pem"],
+                ["key", "Chave privada (PEM)", "/home/eu/.certs/cliente.key"],
+                ["ca", "CA (PEM)", "certs/ca.pem"],
+                ["passphrase", "Passphrase da chave", "{{passphrase}}"],
+              ] as const
+            ).map(([name, label, placeholder]) => (
+              <Field
+                key={name}
+                label={label}
+                value={network[name] ?? ""}
+                placeholder={placeholder}
+                onChange={(value) => setNetwork({ ...network, [name]: value })}
+              />
+            ))}
+            <p className={note}>
+              Arquivos: path relativo ao workspace ou absoluto. O arquivo guarda só o path; deixe a
+              chave privada fora do repositório. O WebSocket usa o certificado, mas não o proxy.
+            </p>
           </TabPanel>
         </TabsRoot>
 

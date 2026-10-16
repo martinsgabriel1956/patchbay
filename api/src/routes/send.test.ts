@@ -1,5 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import type { AddressInfo } from "node:net";
+import { createServer, request as httpRequest } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { type AddressInfo, connect } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -44,20 +47,138 @@ echo.get("/gzip", async (_req, reply) =>
 echo.get("/png", async (_req, reply) => reply.type("image/png").send(PNG));
 echo.get("/big", async (_req, reply) => reply.type("text/plain").send("a".repeat(6 * 1024 * 1024)));
 
+// Proxy mínimo: CONNECT (túnel, https) e URI absoluta (http). Anota o que passou por ele.
+const proxied: { line: string; auth?: string }[] = [];
+const proxy = createServer((req, res) => {
+  proxied.push({ line: `${req.method} ${req.url}`, auth: req.headers["proxy-authorization"] });
+  const upstream = httpRequest(req.url ?? "", { method: req.method, headers: req.headers }, (r) => {
+    res.writeHead(r.statusCode ?? 502, r.headers);
+    r.pipe(res);
+  });
+  req.pipe(upstream);
+});
+proxy.on("connect", (req, socket, head) => {
+  proxied.push({ line: `CONNECT ${req.url}`, auth: req.headers["proxy-authorization"] });
+  const [host, port] = (req.url ?? "").split(":");
+  const upstream = connect(Number(port), host, () => {
+    socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+    upstream.write(head);
+    upstream.pipe(socket).pipe(upstream);
+  });
+  upstream.on("error", () => socket.destroy());
+  socket.on("error", () => upstream.destroy());
+});
+
+// mTLS: CA, certificado do servidor (127.0.0.1) e do cliente (chave com passphrase), gerados aqui.
+const hasOpenssl = (() => {
+  try {
+    execFileSync("openssl", ["version"]);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+const certs = mkdtempSync(path.join(tmpdir(), "patchbay-certs-"));
+function makeCerts() {
+  const ssl = (...args: string[]) => execFileSync("openssl", args, { cwd: certs, stdio: "ignore" });
+  const ec = ["-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1"];
+  writeFileSync(path.join(certs, "san.cnf"), "subjectAltName=IP:127.0.0.1\n");
+  ssl(
+    "req",
+    "-x509",
+    ...ec,
+    "-nodes",
+    "-keyout",
+    "ca.key",
+    "-out",
+    "ca.pem",
+    "-days",
+    "1",
+    "-subj",
+    "/CN=ca",
+  );
+  ssl("req", ...ec, "-nodes", "-keyout", "server.key", "-out", "server.csr", "-subj", "/CN=server");
+  ssl(
+    "x509",
+    "-req",
+    "-in",
+    "server.csr",
+    "-CA",
+    "ca.pem",
+    "-CAkey",
+    "ca.key",
+    "-out",
+    "server.pem",
+    "-days",
+    "1",
+    "-extfile",
+    "san.cnf",
+  );
+  ssl(
+    "req",
+    ...ec,
+    "-keyout",
+    "client.key",
+    "-passout",
+    "pass:segredo",
+    "-out",
+    "client.csr",
+    "-subj",
+    "/CN=cliente",
+  );
+  ssl(
+    "x509",
+    "-req",
+    "-in",
+    "client.csr",
+    "-CA",
+    "ca.pem",
+    "-CAkey",
+    "ca.key",
+    "-out",
+    "client.pem",
+    "-days",
+    "1",
+  );
+}
+const read = (name: string) => readFileSync(path.join(certs, name));
+let mtls: ReturnType<typeof createHttpsServer> | undefined;
+
 const api = Fastify();
 sendRoute(api);
 
 let echoUrl: string;
 let apiUrl: string;
+let proxyPort: number;
+let mtlsUrl: string;
+const listen = (server: ReturnType<typeof createServer>) =>
+  new Promise<number>((done) =>
+    server.listen(0, "127.0.0.1", () => done((server.address() as AddressInfo).port)),
+  );
 beforeAll(async () => {
   await echo.listen({ host: "127.0.0.1", port: 0 });
   await api.listen({ host: "127.0.0.1", port: 0 });
   echoUrl = `http://127.0.0.1:${(echo.server.address() as AddressInfo).port}`;
   apiUrl = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
+  proxyPort = await listen(proxy);
+  if (hasOpenssl) {
+    makeCerts();
+    const tls = { key: read("server.key"), cert: read("server.pem"), ca: read("ca.pem") };
+    mtls = createHttpsServer({ ...tls, requestCert: true, rejectUnauthorized: true }, (req, res) =>
+      res.end(
+        `oi, ${(req.socket as import("node:tls").TLSSocket).getPeerCertificate().subject.CN}`,
+      ),
+    );
+    mtlsUrl = `https://127.0.0.1:${await listen(mtls)}`;
+  }
 });
 afterAll(async () => {
   await api.close();
   await echo.close();
+  proxy.closeAllConnections();
+  proxy.close();
+  mtls?.closeAllConnections();
+  mtls?.close();
 });
 
 const base: HttpRequest = {
@@ -269,4 +390,57 @@ describe("POST /send", () => {
     expect(refused.status).toBe(502);
     expect((await refused.json()).error).toMatch(/ECONNREFUSED/);
   });
+
+  it("proxy: passa por ele com basic auth na URL; noProxy desvia", async () => {
+    const options = { proxy: `http://ana:s3nha@127.0.0.1:${proxyPort}` };
+    const res = await sendOk({ url: `${echoUrl}/echo?via=proxy`, options });
+    expect(echoed(res).url).toBe("/echo?via=proxy");
+    const seen = proxied.at(-1);
+    expect(seen?.line).toMatch(/127\.0\.0\.1/);
+    expect(seen?.auth).toBe(`Basic ${Buffer.from("ana:s3nha").toString("base64")}`);
+
+    const count = proxied.length;
+    await sendOk({ url: `${echoUrl}/echo`, options: { ...options, noProxy: "127.0.0.1" } });
+    expect(proxied).toHaveLength(count);
+
+    const bad = await post({ url: `${echoUrl}/echo`, options: { proxy: "nem é url" } });
+    expect(bad.status).toBe(400);
+  });
+
+  it.skipIf(!hasOpenssl)(
+    "mTLS: cert e key (com passphrase) do workspace, CA absoluta",
+    async () => {
+      const ws = await root();
+      mkdirSync(path.join(ws, "certs"));
+      writeFileSync(path.join(ws, "certs/client.pem"), read("client.pem"));
+      writeFileSync(path.join(ws, "certs/client.key"), read("client.key"));
+      const ca = path.join(certs, "ca.pem");
+      const client = {
+        cert: "certs/client.pem",
+        key: "certs/client.key",
+        passphrase: "segredo",
+        ca,
+      };
+
+      const ok = await sendOk({ url: mtlsUrl, options: client });
+      expect(ok.body).toBe("oi, cliente");
+
+      // Pelo proxy: túnel CONNECT, com o mesmo certificado de cliente dentro dele.
+      const tunneled = await sendOk({
+        url: mtlsUrl,
+        options: { ...client, proxy: `http://127.0.0.1:${proxyPort}` },
+      });
+      expect(tunneled.body).toBe("oi, cliente");
+      expect(proxied.at(-1)?.line).toBe(`CONNECT ${new URL(mtlsUrl).host}`);
+
+      // Sem certificado o servidor recusa o handshake; path para fora do workspace dá 403.
+      expect((await post({ url: mtlsUrl, options: { ca } })).status).toBe(502);
+      expect(
+        (await post({ url: mtlsUrl, options: { ...client, key: "../fora.key" } })).status,
+      ).toBe(403);
+      expect(
+        (await post({ url: mtlsUrl, options: { ...client, cert: "certs/nada.pem" } })).status,
+      ).toBe(400);
+    },
+  );
 });

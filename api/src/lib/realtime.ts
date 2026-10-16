@@ -1,12 +1,13 @@
 // Proxy WebSocket e SSE (PLANNING §6 › WS /realtime). Uma conexão web↔api por sessão: a 1ª
 // mensagem abre o upstream, as seguintes vão para ele (só WS), e fechar de qualquer lado fecha o
 // outro. SSE: GET com stream, cada evento vira um "message". Sem reconexão automática.
+// Proxy e certificado de cliente (options): o SSE usa os dois; o WS só o certificado.
 
 import { request } from "undici";
 import WebSocket, { type RawData } from "ws";
 import { z } from "zod";
 import { type RealtimeEvent, RealtimeStart } from "../schemas.js";
-import { agent, headerPairs } from "./http.js";
+import { dispatcher, headerPairs, tlsOptions } from "./http.js";
 import { sseParser } from "./sse.js";
 
 type Event = RealtimeEvent extends infer E ? (E extends unknown ? Omit<E, "at"> : never) : never;
@@ -27,7 +28,7 @@ async function sse(start: RealtimeStart, emit: Emit, signal: AbortSignal) {
     const res = await request(url, {
       headers: headers.flat(),
       signal,
-      dispatcher: agent, // sem bodyTimeout: um stream pode ficar quieto por horas
+      dispatcher: await dispatcher(start.options), // sem bodyTimeout: o stream pode ficar quieto
       responseHeaders: "raw",
     });
     const pairs = headerPairs(res.headers as unknown as string[]);
@@ -80,10 +81,11 @@ export function relay(client: WebSocket) {
     stream?.abort();
   });
 
-  client.on("message", (data: RawData, isBinary: boolean) => {
+  let opening = false;
+  client.on("message", async (data: RawData, isBinary: boolean) => {
     if (stream) return emit({ type: "error", data: "SSE is read-only: messages are not sent" });
-    if (upstream) {
-      if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
+    if (upstream || opening) {
+      if (upstream?.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
       else emit({ type: "error", data: "upstream is not open" });
       return;
     }
@@ -104,8 +106,12 @@ export function relay(client: WebSocket) {
 
     const headers: Record<string, string> = { "user-agent": "patchbay" };
     for (const h of start.headers) if (h.enabled && h.key) headers[h.key.toLowerCase()] = h.value;
+    // ponytail: WS não passa por proxy (o `ws` precisaria de um agent com CONNECT, que não temos).
+    opening = true;
     try {
-      upstream = new WebSocket(start.url, start.protocols ?? [], { headers });
+      const tls = await tlsOptions(start.options);
+      if (client.readyState !== WebSocket.OPEN) return; // a web saiu enquanto lia os certificados
+      upstream = new WebSocket(start.url, start.protocols ?? [], { headers, ...tls });
     } catch (err) {
       return abort((err as Error).message); // URL ou subprotocolo inválido
     }

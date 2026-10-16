@@ -46,7 +46,7 @@ function withType(type: AuthType, prev: Auth): Auth {
 const input = "border border-line bg-bg text-ink";
 const field = "px-2.5 py-1.5 font-mono text-[14px] outline-offset-[-2px] placeholder:text-mute";
 
-function Field(props: {
+export function Field(props: {
   label: string;
   value: string;
   onChange: (value: string) => void;

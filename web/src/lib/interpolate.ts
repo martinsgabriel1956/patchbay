@@ -1,10 +1,10 @@
 // {{var}} e auth (PLANNING §6, Fase 3). Puro, sem React: recebe a request como está no disco
 // (com os {{var}}) e devolve a request resolvida que vai para o POST /send.
-import type { Auth, HttpRequest, KV, RealtimeRequest, RealtimeStart } from "@api/schemas";
+import type { Auth, HttpRequest, KV, Network, RealtimeRequest, RealtimeStart } from "@api/schemas";
 
 export type Vars = Record<string, string>;
 /** Uma pasta/coleção acima da request (collection.json), da mais próxima para a mais distante. */
-export type Parent = { auth?: Auth; headers?: KV[] };
+export type Parent = { auth?: Auth; headers?: KV[]; network?: Network };
 
 /** `{{nome}}` ou `{{ nome }}`. Nome sem espaço nem chave; `{{}}` e `{{a b}}` não são variável. */
 export const VAR = /\{\{\s*([^{}\s]+)\s*\}\}/g;
@@ -42,6 +42,18 @@ export const parts = (text: string) =>
 export function effectiveAuth(own: Auth, parents: Parent[]): Auth {
   if (own.type !== "inherit") return own;
   return parents.find((p) => p.auth && p.auth.type !== "inherit")?.auth ?? { type: "none" };
+}
+
+const NETWORK = ["proxy", "noProxy", "cert", "key", "ca", "passphrase"] as const;
+
+/** Proxy e certificados: cada campo vem da pasta/coleção mais próxima que o preencha. */
+export function effectiveNetwork(parents: Parent[], vars: Vars) {
+  const network: Network = {};
+  for (const key of NETWORK) {
+    const value = parents.find((p) => p.network?.[key])?.network?.[key];
+    if (value) network[key] = interpolate(value, vars);
+  }
+  return network;
 }
 
 const base64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
@@ -111,7 +123,8 @@ export function prepare(req: HttpRequest, vars: Vars, parents: Parent[] = []): H
   }
 
   // Auth já virou header/query: a request enviada (e o histórico) leva "none".
-  return { ...req, url, params, headers, body: resolvedBody, auth: { type: "none" } };
+  const options = { ...req.options, ...effectiveNetwork(parents, vars) };
+  return { ...req, url, params, headers, body: resolvedBody, auth: { type: "none" }, options };
 }
 
 /**
@@ -132,5 +145,13 @@ export function prepareRealtime(req: RealtimeRequest, vars: Vars, parents: Paren
     parents,
   );
   const protocols = (req.protocols ?? []).map((p) => interpolate(p, vars).trim()).filter(Boolean);
-  return { kind: req.kind, url, headers: headers.filter(on), protocols } satisfies RealtimeStart;
+  const network = effectiveNetwork(parents, vars);
+  const options = Object.keys(network).length ? { options: network } : {};
+  return {
+    kind: req.kind,
+    url,
+    headers: headers.filter(on),
+    protocols,
+    ...options,
+  } satisfies RealtimeStart;
 }
