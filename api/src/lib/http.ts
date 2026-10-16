@@ -1,8 +1,10 @@
 // Executa uma HttpRequest já resolvida via undici e devolve a resposta crua (PLANNING §6, §10).
 import { isUtf8 } from "node:buffer";
+import { subscribe } from "node:diagnostics_channel";
 import { openAsBlob } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { STATUS_CODES } from "node:http";
+import type { Socket } from "node:net";
 import path from "node:path";
 import { pipeline } from "node:stream";
 import {
@@ -11,7 +13,7 @@ import {
   createInflate,
   createZstdDecompress,
 } from "node:zlib";
-import { Agent, FormData, request } from "undici";
+import { Agent, buildConnector, FormData, request } from "undici";
 import type { Body, HttpRequest, HttpResponse, KV } from "../schemas.js";
 import { exists, resolve } from "./workspace.js";
 
@@ -28,12 +30,50 @@ const DECODERS: Record<string, () => NodeJS.ReadWriteStream> = {
   zstd: createZstdDecompress,
 };
 
+// Tempos da conexão, anotados por socket no connector: DNS (lookup), TCP (connect), TLS.
+type SocketTimes = { start: number; lookup?: number; connect?: number; secure?: number };
+const sockets = new WeakMap<object, SocketTimes>();
+function timedConnector(options: buildConnector.BuildOptions = {}): buildConnector.connector {
+  const connect = buildConnector(options);
+  return (opts, callback) => {
+    const times: SocketTimes = { start: performance.now() };
+    // Os tipos dizem void, mas o connector do undici devolve o socket.
+    const socket = connect(opts, callback) as unknown as Socket;
+    sockets.set(socket, times);
+    socket
+      .once("lookup", () => (times.lookup = performance.now()))
+      .once("connect", () => (times.connect = performance.now()))
+      .once("secureConnect", () => (times.secure = performance.now()));
+  };
+}
+
+// Qual socket atendeu cada request nossa. O undici cria o Request dele de forma síncrona dentro
+// de request() (o Pool tem conexões ilimitadas, não enfileira), então `tracing` marca a nossa.
+// Só a 1ª request de um socket leva os tempos da conexão; reaproveitado, fica sem DNS/TCP/TLS.
+type Trace = { conn?: SocketTimes };
+let tracing: Trace | undefined;
+const traces = new WeakMap<object, Trace>();
+subscribe("undici:request:create", (msg) => {
+  if (tracing) traces.set((msg as { request: object }).request, tracing);
+});
+subscribe("undici:client:sendHeaders", (msg) => {
+  const { request, socket } = msg as { request: object; socket: object };
+  const conn = sockets.get(socket);
+  sockets.delete(socket);
+  const trace = traces.get(request);
+  if (trace) trace.conn = conn;
+});
+
+const ms = (n: number) => Math.round(n * 10) / 10;
+const span = (from?: number, to?: number) =>
+  from !== undefined && to !== undefined ? ms(to - from) : undefined;
+
 // Os timeouts do undici ficam desligados: quem manda é options.timeoutMs (e, no SSE, a web).
-export const agent = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
+export const agent = new Agent({ headersTimeout: 0, bodyTimeout: 0, connect: timedConnector() });
 const insecureAgent = new Agent({
   headersTimeout: 0,
   bodyTimeout: 0,
-  connect: { rejectUnauthorized: false },
+  connect: timedConnector({ rejectUnauthorized: false }),
 });
 
 /** Erro com o status que a rota devolve para a web (400 request inválida, 504 timeout). */
@@ -130,7 +170,10 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
   const start = performance.now();
   try {
     for (let hop = 0; ; hop++) {
-      const res = await request(url, {
+      const hopStart = performance.now();
+      const trace: Trace = {};
+      tracing = trace;
+      const pending = request(url, {
         method,
         headers: headers.flat(),
         body: data,
@@ -138,6 +181,9 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
         dispatcher: insecureTls ? insecureAgent : agent,
         responseHeaders: "raw",
       });
+      tracing = undefined;
+      const res = await pending;
+      const headersAt = performance.now();
       const pairs = headerPairs(res.headers as unknown as string[]);
       const get = (name: string) => pairs.find(([key]) => key.toLowerCase() === name)?.[1];
 
@@ -185,6 +231,9 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
       const undecodable = encoding !== undefined && encoding !== "identity" && !decoder;
       const isBinary = undecodable || (contentType ? !TEXT.test(contentType) : !isUtf8(body));
 
+      const end = performance.now();
+      const { conn } = trace;
+      const ready = conn?.secure ?? conn?.connect ?? hopStart;
       return {
         status: res.statusCode,
         statusText: res.statusText || STATUS_CODES[res.statusCode] || "",
@@ -192,7 +241,16 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
         body: body.toString(isBinary ? "base64" : "utf8"),
         isBinary,
         truncated,
-        timeMs: Math.round(performance.now() - start),
+        timeMs: Math.round(end - start),
+        timings: {
+          redirect: hop > 0 ? ms(hopStart - start) : undefined,
+          dns: span(conn?.start, conn?.lookup),
+          tcp: span(conn?.lookup ?? conn?.start, conn?.connect),
+          tls: span(conn?.connect, conn?.secure),
+          ttfb: ms(headersAt - ready),
+          download: ms(end - headersAt),
+          total: ms(end - start),
+        },
         sizeBytes,
         decodedSizeBytes,
       };

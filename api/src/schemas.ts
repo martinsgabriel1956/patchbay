@@ -96,6 +96,19 @@ export const HttpResponse = z.object({
   isBinary: z.boolean(),
   truncated: z.boolean(),
   timeMs: z.number(),
+  // Fases da última request, em ms. Sem dns/tcp/tls = conexão reaproveitada (sem dns: IP literal).
+  // redirect = tempo dos saltos anteriores. As fases somam ≈ total.
+  timings: z
+    .object({
+      redirect: z.number().optional(),
+      dns: z.number().optional(),
+      tcp: z.number().optional(),
+      tls: z.number().optional(),
+      ttfb: z.number(),
+      download: z.number(),
+      total: z.number(),
+    })
+    .optional(),
   sizeBytes: z.number().int(), // trafegado (comprimido, se veio comprimido)
   decodedSizeBytes: z.number().int(), // descomprimido, o que a web exibe (PLANNING §10)
 });

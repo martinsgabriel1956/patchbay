@@ -30,6 +30,10 @@ echo.get("/slow", async () => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
   return "late";
 });
+echo.get("/delay", async () => {
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  return "ok";
+});
 echo.get("/hang", (_req, reply) => {
   reply.raw.on("close", () => hangClosed());
 });
@@ -226,6 +230,7 @@ describe("POST /send", () => {
   it("segue redirect (POST → GET) ou não, conforme o toggle", async () => {
     const followed = await sendOk({ method: "POST", url: `${echoUrl}/redirect` });
     expect(echoed(followed)).toMatchObject({ method: "GET", url: "/echo?from=redirect" });
+    expect(followed.timings?.redirect).toBeGreaterThan(0);
     const manual = await sendOk({
       method: "POST",
       url: `${echoUrl}/redirect`,
@@ -246,6 +251,30 @@ describe("POST /send", () => {
     const big = await sendOk({ url: `${echoUrl}/big` });
     expect(big.truncated).toBe(true);
     expect(big.body).toHaveLength(5 * 1024 * 1024);
+  });
+
+  it("timings: fases por request; conexão reaproveitada fica sem DNS/TCP/TLS", async () => {
+    // localhost: origem que nenhum outro teste usa, então conexão nova e com DNS. Duas ao mesmo
+    // tempo abrem dois sockets, cada uma com os seus tempos; a terceira reaproveita um deles.
+    const url = `${echoUrl.replace("127.0.0.1", "localhost")}/delay`;
+    const fresh = await Promise.all([sendOk({ url }), sendOk({ url })]);
+    const reused = await sendOk({ url });
+    for (const res of [...fresh, reused]) {
+      const t = res.timings;
+      if (!t) throw new Error("sem timings");
+      const phases = [t.redirect, t.dns, t.tcp, t.tls, t.ttfb, t.download].map((n) => n ?? 0);
+      for (const n of phases) expect(n).toBeGreaterThanOrEqual(0);
+      expect(Math.abs(phases.reduce((a, b) => a + b) - t.total)).toBeLessThan(1);
+      expect(Math.abs(t.total - res.timeMs)).toBeLessThanOrEqual(0.5);
+      expect(t.ttfb).toBeGreaterThanOrEqual(45); // o /delay segura 50 ms antes dos headers
+      expect(t.tls).toBeUndefined(); // http
+    }
+    for (const { timings } of fresh) {
+      expect(timings?.dns).toBeDefined();
+      expect(timings?.tcp).toBeDefined();
+    }
+    expect(reused.timings?.dns).toBeUndefined();
+    expect(reused.timings?.tcp).toBeUndefined();
   });
 
   it("timeout vira 504", async () => {
