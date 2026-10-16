@@ -19,12 +19,12 @@ import { useEffect, useRef } from "react";
 import type { Scope } from "@/features/environments/store";
 import { VAR } from "@/lib/interpolate";
 
-const highlight = HighlightStyle.define([
+export const highlight = HighlightStyle.define([
   { tag: tags.propertyName, color: "var(--ink)" },
   { tag: tags.string, color: "var(--ink-3)" },
 ]);
 
-const theme = EditorView.theme({
+export const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ink-2)", backgroundColor: "transparent", fontSize: "13px" },
   "&.cm-focused": { outline: "2px solid var(--focus)", outlineOffset: "-2px" },
   ".cm-scroller": {

@@ -101,6 +101,11 @@ export function App() {
   const active = useRequest((s) => activeTab(s).key);
   const activePath = useRequest((s) => activeTab(s).path);
   const realtime = useRequest((s) => activeTab(s).kind !== "http");
+  // Há uma resposta na tela e outra anterior desta aba para comparar.
+  const comparable = useRequest((s) => {
+    const tab = activeTab(s);
+    return tab.result.state === "done" && (tab.past?.length ?? 0) > 1;
+  });
   const tree = useWorkspace((s) => s.tree);
   const contents = useWorkspace((s) => s.contents);
   const { collection, env, envs } = useCurrentEnvironments();
@@ -315,6 +320,11 @@ export function App() {
               Reabrir aba fechada <CommandShortcut>{mod("Shift T")}</CommandShortcut>
             </CommandItem>
             {!realtime && <CommandItem onSelect={run(copyCurl)}>Copiar como cURL</CommandItem>}
+            {comparable && (
+              <CommandItem onSelect={run(() => useRequest.setState({ comparing: true }))}>
+                Comparar resposta com…
+              </CommandItem>
+            )}
           </CommandGroup>
 
           {list.length > 0 && (

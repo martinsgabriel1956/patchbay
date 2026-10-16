@@ -1,14 +1,21 @@
 import type { HttpResponse } from "@api/schemas";
-import { Fragment, useMemo, useState } from "react";
-import { CodeEditor } from "@/components/code-editor";
+import { json as jsonLanguage } from "@codemirror/lang-json";
+import { syntaxHighlighting } from "@codemirror/language";
+import { MergeView } from "@codemirror/merge";
+import { EditorState } from "@codemirror/state";
+import { EditorView, lineNumbers } from "@codemirror/view";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { CodeEditor, theme as editorTheme, highlight } from "@/components/code-editor";
 import { ShortcutList } from "@/components/shortcuts";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCurrentEnvironments } from "@/features/environments/env-bar";
 import { useEnvironments } from "@/features/environments/store";
-import { activeTab, useRequest } from "@/features/request-editor/store";
+import { activeTab, type Past, useRequest } from "@/features/request-editor/store";
 import { openHistory, when } from "@/features/sidebar/sidebar";
 import { useWorkspace } from "@/features/sidebar/store";
 import { focusUrl, isMac, mod } from "@/lib/utils";
+import { diffHeaders, prettyJson } from "./compare";
 import { diagnose, STAMPS } from "./diagnose";
 
 // Classe de status = cor da fita (DESIGN.md › Secondary), sempre na variante *-text.
@@ -238,6 +245,7 @@ function Idle() {
 
 function Response({ response }: { response: HttpResponse }) {
   const [pretty, setPretty] = useState(true);
+  const comparable = useRequest((s) => (activeTab(s).past?.length ?? 0) > 1);
   const type = response.headers.find(([key]) => key.toLowerCase() === "content-type")?.[1] ?? "";
 
   return (
@@ -252,7 +260,12 @@ function Response({ response }: { response: HttpResponse }) {
           {response.status}
         </span>
         <span className="label min-w-0 truncate text-[17px]">{response.statusText}</span>
-        <div className="ml-auto inline-flex shrink-0 border border-mute">
+        {comparable && (
+          <div className="ml-auto shrink-0">
+            <Action onClick={() => useRequest.setState({ comparing: true })}>Comparar com…</Action>
+          </div>
+        )}
+        <div className={`${comparable ? "" : "ml-auto"} inline-flex shrink-0 border border-mute`}>
           {(["Raw", "Pretty"] as const).map((name) => (
             <button
               key={name}
@@ -296,6 +309,7 @@ function Response({ response }: { response: HttpResponse }) {
           </dl>
         </TabPanel>
       </TabsRoot>
+      <CompareDialog response={response} />
     </div>
   );
 }
@@ -320,14 +334,7 @@ function Body({
 }) {
   const { body, isBinary } = response;
   const mime = type.split(";")[0].trim();
-  const json = useMemo(() => {
-    if (isBinary || !(/json/i.test(mime) || /^\s*[[{]/.test(body))) return null;
-    try {
-      return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-      return null; // inválido ou truncado: fica o texto cru
-    }
-  }, [body, isBinary, mime]);
+  const json = useMemo(() => prettyJson(response), [response]);
 
   if (pretty && mime.startsWith("image/")) {
     const src = isBinary
@@ -354,4 +361,185 @@ function Body({
       value={pretty && json !== null ? json : body}
     />
   );
+}
+
+const clock = (at: string) => new Date(at).toLocaleTimeString("pt-BR");
+
+/** A resposta da tela contra uma anterior desta aba: antes e depois de um deploy, dev × prod
+ *  (troque o environment e envie de novo). Só as últimas respostas da sessão, em memória. */
+function CompareDialog({ response }: { response: HttpResponse }) {
+  const open = useRequest((s) => s.comparing);
+  const past = useRequest((s) => activeTab(s).past);
+  const others = (past ?? []).filter((p) => p.response !== response);
+  const now = past?.find((p) => p.response === response);
+  const [pick, setPick] = useState(0);
+  const before = others[pick] ?? others[0];
+  const changes = useMemo(
+    () => (before ? diffHeaders(before.response.headers, response.headers) : []),
+    [before, response],
+  );
+
+  return (
+    <Dialog
+      open={open && !!before}
+      onOpenChange={(comparing) => useRequest.setState({ comparing })}
+    >
+      <DialogContent className="h-[85vh] content-start overflow-y-auto p-[18px] sm:max-w-[min(1200px,calc(100%-2rem))]">
+        <DialogTitle>Comparar respostas</DialogTitle>
+        <DialogDescription>
+          Uma resposta anterior desta aba contra a da tela. Ficam as últimas 5 da sessão, só em
+          memória.
+        </DialogDescription>
+        {before && (
+          <>
+            <label className="grid gap-1.5">
+              <span className="label text-[12px] text-mute">Antes</span>
+              <select
+                value={pick}
+                onChange={(e) => setPick(Number(e.target.value))}
+                className="h-[34px] min-w-0 border border-mute bg-bg px-2 font-mono text-[13px] text-ink tabular-nums"
+              >
+                {others.map((p, i) => (
+                  <option key={p.at} value={i}>
+                    {clock(p.at)} · {p.response.status} · {p.response.timeMs} ms · {p.url}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid grid-cols-2 gap-px border border-line bg-line">
+              <Summary title="Antes" response={before.response} past={before} />
+              <Summary title="Agora" response={response} past={now} />
+            </div>
+
+            <section aria-label="Headers" className="grid gap-2.5">
+              <h3 className="label text-[12px] text-mute">Headers</h3>
+              {changes.length === 0 ? (
+                <p className="text-[15px] text-mute">Headers iguais.</p>
+              ) : (
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1.5fr)] gap-px border border-line bg-line font-mono text-[13px]">
+                  {["", "header", "antes", "agora"].map((h) => (
+                    <span key={h} className="bg-bg px-2.5 py-1 text-[12px] text-mute">
+                      {h}
+                    </span>
+                  ))}
+                  {changes.map((c) => (
+                    <Fragment key={c.name}>
+                      {/* +: só agora; −: só antes; ~: mudou. Sem cor: a cor é código de status. */}
+                      <span
+                        className="bg-bg px-2.5 py-1 text-mute"
+                        title={
+                          c.before === undefined
+                            ? "novo"
+                            : c.after === undefined
+                              ? "sumiu"
+                              : "mudou"
+                        }
+                      >
+                        {c.before === undefined ? "+" : c.after === undefined ? "−" : "~"}
+                      </span>
+                      <span className="bg-bg px-2.5 py-1 break-all text-ink">{c.name}</span>
+                      <span className="bg-bg px-2.5 py-1 break-all whitespace-pre-wrap text-ink-2">
+                        {c.before ?? <span className="text-mute">—</span>}
+                      </span>
+                      <span className="bg-bg px-2.5 py-1 break-all whitespace-pre-wrap text-ink">
+                        {c.after ?? <span className="text-mute">—</span>}
+                      </span>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section aria-label="Body" className="grid gap-2.5">
+              <h3 className="label text-[12px] text-mute">Body</h3>
+              <BodyDiff before={before.response} after={response} />
+            </section>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Summary(props: { title: string; response: HttpResponse; past?: Past }) {
+  const { response } = props;
+  return (
+    <div className="grid content-start gap-2 bg-bg p-3.5">
+      <h3 className="label text-[12px] text-mute">
+        {props.title}
+        {props.past && ` · ${clock(props.past.at)}`}
+      </h3>
+      <div className="flex items-baseline gap-3.5">
+        <span
+          className={`font-mono text-[40px] leading-none font-semibold tabular-nums ${TONES[Math.floor(response.status / 100)] ?? "text-ink"}`}
+        >
+          {response.status}
+        </span>
+        <span className="label min-w-0 truncate text-[17px]">{response.statusText}</span>
+      </div>
+      {props.past && (
+        <p className="truncate font-mono text-[13px] text-ink-2" title={props.past.url}>
+          {props.past.url}
+        </p>
+      )}
+      <dl className="flex flex-wrap gap-x-4 font-mono text-[13px] tabular-nums">
+        <Meta label="tempo" value={`${response.timeMs} ms`} />
+        <Meta label="tamanho" value={bytes(response.sizeBytes)} />
+      </dl>
+    </div>
+  );
+}
+
+// Diff só em tinta (DESIGN.md › The Color Is Code Rule): linha mudada em superfície, trecho
+// mudado com a régua de 2px embaixo, marcador de tinta na calha. Mesma especificidade do
+// baseTheme do @codemirror/merge, que este tema vence por precedência.
+const mergeTheme = EditorView.theme({
+  "&.cm-merge-a .cm-changedLine, &.cm-merge-b .cm-changedLine, & .cm-deletedChunk": {
+    backgroundColor: "var(--surface)",
+  },
+  "&.cm-merge-a .cm-changedText, &.cm-merge-b .cm-changedText, & .cm-deletedChunk .cm-deletedText":
+    {
+      color: "var(--ink)",
+      background: "linear-gradient(var(--ink), var(--ink)) bottom/100% 2px no-repeat",
+    },
+  "&.cm-merge-a .cm-changedLineGutter, &.cm-merge-b .cm-changedLineGutter, & .cm-deletedLineGutter":
+    { background: "var(--ink)" },
+  "& .cm-collapsedLines": {
+    color: "var(--mute)",
+    background: "var(--surface)",
+    fontSize: "12px",
+  },
+});
+
+/** JSON formatado e com chaves em ordem dos dois lados (ordem e espaços não viram ruído); o
+ *  resto, cru. */
+function BodyDiff({ before, after }: { before: HttpResponse; after: HttpResponse }) {
+  const parent = useRef<HTMLDivElement>(null);
+  const [x, y] = [prettyJson(before, true), prettyJson(after, true)];
+  const [a, b] = [x ?? before.body, y ?? after.body];
+  const json = x !== null && y !== null;
+  useEffect(() => {
+    if (a === b) return;
+    const extensions = (label: string) => [
+      lineNumbers(),
+      EditorView.lineWrapping,
+      EditorState.readOnly.of(true),
+      syntaxHighlighting(highlight),
+      json ? jsonLanguage() : [],
+      editorTheme,
+      mergeTheme,
+      EditorView.contentAttributes.of({ "aria-label": label }),
+    ];
+    const view = new MergeView({
+      a: { doc: a, extensions: extensions("Body antes") },
+      b: { doc: b, extensions: extensions("Body agora") },
+      parent: parent.current as HTMLDivElement,
+      collapseUnchanged: {},
+    });
+    return () => view.destroy();
+  }, [a, b, json]);
+
+  if (a === b) return <p className="text-[15px] text-mute">Body igual.</p>;
+  return <div ref={parent} className="border border-line" />;
 }
