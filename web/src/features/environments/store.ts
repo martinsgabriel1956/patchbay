@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { files, useWorkspace } from "@/features/sidebar/store";
+import { api } from "@/lib/api-client";
 import { type Parent, type Vars, varsFrom } from "@/lib/interpolate";
 
 export type Collection = { name?: string; auth?: Auth; headers?: KV[]; vars?: KV[] };
@@ -67,6 +68,15 @@ export const useEnvironments = create<EnvStore>()(
     { name: "patchbay.environments", partialize: ({ active, last }) => ({ active, last }) },
   ),
 );
+
+/** Cookie jar na api (só em memória): um por coleção + environment; "nenhum" é um jar à parte. */
+export const jarKey = (collection?: string, env?: string) => `${collection ?? ""}/${env ?? ""}`;
+export const cookiesPath = (collection?: string, env?: string) =>
+  `/cookies?jar=${encodeURIComponent(jarKey(collection, env))}`;
+export const clearCookies = (collection?: string, env?: string) =>
+  api(cookiesPath(collection, env), { method: "DELETE" }).catch((err) =>
+    useWorkspace.setState({ error: `Limpar cookies: ${(err as Error).message}` }),
+  );
 
 export const collectionOf = (path?: string) =>
   path?.includes("/") ? path.split("/")[0] : undefined;

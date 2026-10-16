@@ -11,6 +11,7 @@ import {
   createInflate,
   createZstdDecompress,
 } from "node:zlib";
+import { CookieJar } from "tough-cookie";
 import { Agent, FormData, request } from "undici";
 import type { Body, HttpRequest, HttpResponse, KV } from "../schemas.js";
 import { exists, resolve } from "./workspace.js";
@@ -35,6 +36,16 @@ const insecureAgent = new Agent({
   bodyTimeout: 0,
   connect: { rejectUnauthorized: false },
 });
+
+// Cookie jar por coleção + environment. Só em memória: vive enquanto a api roda (inclusive
+// na bandeja) e nunca vai para o disco.
+const jars = new Map<string, CookieJar>();
+export function jarOf(key: string) {
+  const jar = jars.get(key) ?? new CookieJar();
+  jars.set(key, jar);
+  return jar;
+}
+export const clearJar = (key: string) => jars.delete(key);
 
 /** Erro com o status que a rota devolve para a web (400 request inválida, 504 timeout). */
 export const fail = (status: number, message: string): never => {
@@ -104,7 +115,13 @@ async function encodeBody(
   }
 }
 
-export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpResponse> {
+/** Com jar: manda os cookies que casam com a URL (a cada hop do redirect), a menos que a request
+ *  já tenha um Cookie explícito, e guarda todo Set-Cookie, inclusive dos redirects. */
+export async function send(
+  req: HttpRequest,
+  signal: AbortSignal,
+  jar?: CookieJar,
+): Promise<HttpResponse> {
   const {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     followRedirects = true,
@@ -130,9 +147,10 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
   const start = performance.now();
   try {
     for (let hop = 0; ; hop++) {
+      const cookie = jar && !has("cookie") ? await jar.getCookieString(url.href) : "";
       const res = await request(url, {
         method,
-        headers: headers.flat(),
+        headers: cookie ? [...headers.flat(), "cookie", cookie] : headers.flat(),
         body: data,
         signal: abort,
         dispatcher: insecureTls ? insecureAgent : agent,
@@ -140,6 +158,11 @@ export async function send(req: HttpRequest, signal: AbortSignal): Promise<HttpR
       });
       const pairs = headerPairs(res.headers as unknown as string[]);
       const get = (name: string) => pairs.find(([key]) => key.toLowerCase() === name)?.[1];
+      for (const [key, value] of pairs) {
+        if (jar && key.toLowerCase() === "set-cookie") {
+          await jar.setCookie(value, url.href, { ignoreError: true });
+        }
+      }
 
       const location = get("location");
       if (followRedirects && location && REDIRECTS.has(res.statusCode) && hop < MAX_REDIRECTS) {

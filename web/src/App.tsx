@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { CollectionDialog } from "@/features/environments/collection-dialog";
 import { EnvBar, useCurrentEnvironments } from "@/features/environments/env-bar";
-import { collectionEnvs, useEnvironments } from "@/features/environments/store";
+import { clearCookies, collectionEnvs, useEnvironments } from "@/features/environments/store";
 import { RealtimeEditor } from "@/features/realtime/realtime-editor";
 import { RealtimePanel } from "@/features/realtime/realtime-panel";
 import { RequestEditor } from "@/features/request-editor/request-editor";
@@ -315,6 +315,11 @@ export function App() {
               Reabrir aba fechada <CommandShortcut>{mod("Shift T")}</CommandShortcut>
             </CommandItem>
             {!realtime && <CommandItem onSelect={run(copyCurl)}>Copiar como cURL</CommandItem>}
+            {!realtime && (
+              <CommandItem onSelect={run(() => clearCookies(collection, env))}>
+                Limpar cookies de {env ?? "sem environment"}
+              </CommandItem>
+            )}
           </CommandGroup>
 
           {list.length > 0 && (

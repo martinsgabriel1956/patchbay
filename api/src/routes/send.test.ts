@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib";
 import Fastify from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { root } from "../lib/workspace.js";
-import type { HistoryEntry, HttpRequest, HttpResponse } from "../schemas.js";
+import type { HistoryEntry, HttpRequest, HttpResponse, SendRequest } from "../schemas.js";
 import { sendRoute } from "./send.js";
 
 process.env.WORKSPACE_DIR = path.join(mkdtempSync(path.join(tmpdir(), "patchbay-send-")), "ws");
@@ -34,6 +34,9 @@ echo.get("/hang", (_req, reply) => {
   reply.raw.on("close", () => hangClosed());
 });
 echo.get("/cookies", async (_req, reply) => reply.header("set-cookie", ["a=1", "b=2"]).send("ok"));
+echo.get("/login", async (_req, reply) =>
+  reply.header("set-cookie", "sid=1; Path=/; HttpOnly").redirect("/echo", 302),
+);
 echo.post("/redirect", async (_req, reply) => reply.redirect("/echo?from=redirect", 302));
 echo.get("/gzip", async (_req, reply) =>
   reply
@@ -72,7 +75,7 @@ const base: HttpRequest = {
   auth: { type: "none" },
 };
 
-function post(req: Partial<HttpRequest>, signal?: AbortSignal) {
+function post(req: Partial<SendRequest>, signal?: AbortSignal) {
   return fetch(`${apiUrl}/send`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -81,7 +84,7 @@ function post(req: Partial<HttpRequest>, signal?: AbortSignal) {
   });
 }
 
-async function sendOk(req: Partial<HttpRequest>) {
+async function sendOk(req: Partial<SendRequest>) {
   const res = await post(req);
   expect(res.status).toBe(200);
   return (await res.json()) as HttpResponse;
@@ -221,6 +224,26 @@ describe("POST /send", () => {
       ["set-cookie", "a=1"],
       ["set-cookie", "b=2"],
     ]);
+  });
+
+  it("cookie jar por environment: Set-Cookie (até no redirect) volta depois; Cookie explícito vence", async () => {
+    const jar = "col/dev";
+    const cookieOf = async (req: Partial<SendRequest>) =>
+      echoed(await sendOk({ url: `${echoUrl}/echo`, ...req })).headers.cookie;
+    // O cookie veio no 302 e já foi no hop seguinte.
+    expect(echoed(await sendOk({ jar, url: `${echoUrl}/login` })).headers.cookie).toBe("sid=1");
+    expect(await cookieOf({ jar })).toBe("sid=1");
+    expect(await cookieOf({ jar: "col/prod" })).toBeUndefined();
+    expect(await cookieOf({})).toBeUndefined();
+    const explicit = [{ key: "Cookie", value: "x=2", enabled: true }];
+    expect(await cookieOf({ jar, headers: explicit })).toBe("x=2");
+
+    const cookies = `${apiUrl}/cookies?jar=${encodeURIComponent(jar)}`;
+    expect(await (await fetch(cookies)).json()).toEqual([
+      { name: "sid", value: "1", domain: "127.0.0.1", path: "/" },
+    ]);
+    expect((await fetch(cookies, { method: "DELETE" })).status).toBe(204);
+    expect(await cookieOf({ jar })).toBeUndefined();
   });
 
   it("segue redirect (POST → GET) ou não, conforme o toggle", async () => {
