@@ -1,7 +1,7 @@
 import type { Auth, Body, HttpRequest, HttpResponse, KV, RealtimeRequest } from "@api/schemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { requestContext } from "@/features/environments/store";
+import { requestContext, useEnvironments } from "@/features/environments/store";
 import { useRealtime } from "@/features/realtime/store";
 import { channelOf, files, json, nextChannel, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
@@ -269,7 +269,14 @@ export const useRequest = create<RequestStore>()(
               body: JSON.stringify(req),
               signal: controller.signal,
             });
-            patch(tab.key, { result: { state: "done", response: await res.json() } });
+            const response: HttpResponse = await res.json();
+            patch(tab.key, { result: { state: "done", response } });
+            // Salva: vira `{{nome.res.…}}` para as outras requests da coleção.
+            const { path } = tab;
+            if (path)
+              useEnvironments.setState((s) => ({
+                responses: { ...s.responses, [path]: response },
+              }));
           } catch (err) {
             const { status, message } = err as Error & { status?: number };
             patch(tab.key, {

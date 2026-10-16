@@ -40,7 +40,11 @@ export function ShortcutList() {
       <p className="max-w-[64ch] text-[15px] text-ink-2">
         <code className="font-mono text-[14px] text-ink">{"{{nome}}"}</code> na URL, nos headers e
         no body vira o valor do environment ativo. Sem valor, fica em vermelho e a request não sai
-        até você escolher outro environment, definir o valor ou enviar assim mesmo.
+        até você escolher outro environment, definir o valor ou enviar assim mesmo.{" "}
+        <code className="font-mono text-[14px] text-ink">{"{{login.res.body.token}}"}</code> usa a
+        última resposta da request <code className="font-mono text-[14px] text-ink">login</code> da
+        coleção (também <code className="font-mono text-[14px] text-ink">res.status</code> e{" "}
+        <code className="font-mono text-[14px] text-ink">res.headers.nome</code>).
       </p>
       <p className="max-w-[64ch] text-[15px] text-ink-2">
         Só na palette: nova request WebSocket ou SSE, copiar como cURL, importar do Postman,

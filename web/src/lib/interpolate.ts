@@ -1,6 +1,13 @@
 // {{var}} e auth (PLANNING §6, Fase 3). Puro, sem React: recebe a request como está no disco
 // (com os {{var}}) e devolve a request resolvida que vai para o POST /send.
-import type { Auth, HttpRequest, KV, RealtimeRequest, RealtimeStart } from "@api/schemas";
+import type {
+  Auth,
+  HttpRequest,
+  HttpResponse,
+  KV,
+  RealtimeRequest,
+  RealtimeStart,
+} from "@api/schemas";
 
 export type Vars = Record<string, string>;
 /** Uma pasta/coleção acima da request (collection.json), da mais próxima para a mais distante. */
@@ -33,6 +40,37 @@ export const DYNAMIC: Record<string, () => string> = {
 /** Tem valor no escopo ou é dinâmica (para destacar como definida). */
 export const defined = (name: string, vars: Vars) =>
   Object.hasOwn(vars, name) || Object.hasOwn(DYNAMIC, name);
+
+/**
+ * Última resposta de uma request como variáveis: `<nome>.res.status`, `<nome>.res.headers.<header>`
+ * (minúsculo; repetido junta com ", ") e `<nome>.res.body` (texto cru). Body JSON também vira
+ * `<nome>.res.body.<caminho>` até as folhas, com índice de array como chave (`items.0.id`).
+ */
+export function responseVars(name: string, res: HttpResponse): Vars {
+  const prefix = `${name}.res`;
+  const vars: Vars = { [`${prefix}.status`]: String(res.status) };
+  for (const [key, value] of res.headers) {
+    const k = `${prefix}.headers.${key.toLowerCase()}`;
+    vars[k] = Object.hasOwn(vars, k) ? `${vars[k]}, ${value}` : value;
+  }
+  if (res.isBinary) return vars;
+  vars[`${prefix}.body`] = res.body;
+  let body: unknown;
+  try {
+    body = JSON.parse(res.body);
+  } catch {
+    return vars; // texto, ou JSON cortado (truncated)
+  }
+  // ponytail: achata o JSON inteiro (só folhas); objeto/array no meio do caminho não vira
+  // variável. Resolver sob demanda se resposta grande pesar ou se quiser `{{x.res.body.user}}`.
+  const walk = (value: unknown, path: string) => {
+    if (value && typeof value === "object")
+      for (const [k, v] of Object.entries(value)) walk(v, `${path}.${k}`);
+    else vars[path] = String(value);
+  };
+  if (body && typeof body === "object") walk(body, `${prefix}.body`);
+  return vars;
+}
 
 /** Uma passada só: valor que contém `{{` não é reinterpretado. Indefinida fica como está. */
 export const interpolate = (text: string, vars: Vars) =>
