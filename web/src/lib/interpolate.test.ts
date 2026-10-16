@@ -208,6 +208,28 @@ describe("variáveis dinâmicas", () => {
   });
 });
 
+describe("network", () => {
+  it("cada campo vem da pasta mais próxima que o preencha, com {{var}} resolvida", () => {
+    const parents = [
+      { network: { proxy: "", cert: "pasta.pem" } },
+      { network: { proxy: "{{proxy}}", cert: "colecao.pem", passphrase: "{{pass}}" } },
+    ];
+    const vars = { proxy: "http://p:3128", pass: "segredo" };
+    expect(prepare(request({ options: { timeoutMs: 5 } }), vars, parents).options).toEqual({
+      timeoutMs: 5,
+      proxy: "http://p:3128",
+      cert: "pasta.pem",
+      passphrase: "segredo",
+    });
+    const ws = { id: "1", name: "ws", kind: "ws" as const, url: "ws://x", headers: [] };
+    expect(prepareRealtime(ws, vars, parents).options).toEqual({
+      proxy: "http://p:3128",
+      cert: "pasta.pem",
+      passphrase: "segredo",
+    });
+  });
+});
+
 describe("unresolved", () => {
   it("lista as {{var}} que sobraram depois de resolver, sem repetir", () => {
     const req = { url: "{{baseUrl}}/x?q={{ q }}", headers: [{ key: "X", value: "{{baseUrl}}" }] };

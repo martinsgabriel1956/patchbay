@@ -1,10 +1,10 @@
 // Environments e variáveis (PLANNING §8, Fase 3). Tudo vem do disco:
-//   <coleção>/collection.json         { name, auth?, headers?, vars? } (pastas: { name, auth?, headers? })
+//   <coleção>/collection.json         { name, auth?, headers?, vars?, network? } (pastas: sem vars)
 //   <coleção>/environments/<nome>.json { name, vars }
 //   <coleção>/.env.local.json          { "<environment>": KV[] }  segredos, gitignored
 // Coleção = pasta do primeiro nível. Aqui só fica o environment ativo de cada coleção (localStorage)
 // e o cache dos segredos e das últimas respostas (memória, nunca localStorage).
-import type { Auth, Environment, HttpResponse, KV, TreeEntry } from "@api/schemas";
+import type { Auth, Environment, HttpResponse, KV, Network, TreeEntry } from "@api/schemas";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -13,7 +13,13 @@ import { files, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
 import { type Parent, responseVars, type Vars, varsFrom } from "@/lib/interpolate";
 
-export type Collection = { name?: string; auth?: Auth; headers?: KV[]; vars?: KV[] };
+export type Collection = {
+  name?: string;
+  auth?: Auth;
+  headers?: KV[];
+  vars?: KV[];
+  network?: Network;
+};
 export type Secrets = Record<string, KV[]>;
 /** Variáveis resolvidas e a versão para mostrar na tela (segredos mascarados). */
 export type Scope = { vars: Vars; display: Vars };

@@ -32,6 +32,22 @@ export const Auth = z.discriminatedUnion("type", [
 ]);
 export type Auth = z.infer<typeof Auth>;
 
+/**
+ * Proxy e certificado de cliente (mTLS). No disco: `network` do collection.json (pastas herdam,
+ * campo a campo; `{{var}}` deixa dev e prod diferentes). No /send e no /realtime: já resolvido,
+ * dentro de `options`. cert/key/ca são paths de arquivos PEM (relativos ao workspace ou
+ * absolutos), nunca o conteúdo. passphrase é segredo: só como `{{var}}` do .env.local.json.
+ */
+export const Network = z.object({
+  proxy: z.string().optional(), // http(s)://[user:senha@]host:porta; vazio = HTTP(S)_PROXY do SO
+  noProxy: z.string().optional(), // hosts separados por vírgula, como NO_PROXY
+  cert: z.string().optional(),
+  key: z.string().optional(),
+  ca: z.string().optional(),
+  passphrase: z.string().optional(),
+});
+export type Network = z.infer<typeof Network>;
+
 export const HttpRequest = z.object({
   id: z.string(),
   name: z.string(),
@@ -49,6 +65,7 @@ export const HttpRequest = z.object({
       timeoutMs: z.number().int().positive().optional(),
       followRedirects: z.boolean().optional(),
       insecureTls: z.boolean().optional(),
+      ...Network.shape,
     })
     .optional(),
 });
@@ -78,7 +95,7 @@ export const RealtimeStart = RealtimeRequest.pick({
   url: true,
   headers: true,
   protocols: true,
-}).extend({ kind: z.enum(["ws", "sse"]) });
+}).extend({ kind: z.enum(["ws", "sse"]), options: Network.optional() });
 export type RealtimeStart = z.infer<typeof RealtimeStart>;
 
 /**

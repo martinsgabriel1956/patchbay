@@ -14,8 +14,8 @@ import {
   createZstdDecompress,
 } from "node:zlib";
 import { CookieJar } from "tough-cookie";
-import { Agent, buildConnector, FormData, request } from "undici";
-import type { Body, HttpRequest, HttpResponse, KV } from "../schemas.js";
+import { buildConnector, type Dispatcher, EnvHttpProxyAgent, FormData, request } from "undici";
+import type { Body, HttpRequest, HttpResponse, KV, Network } from "../schemas.js";
 import { exists, resolve } from "./workspace.js";
 
 const LIMIT = 5 * 1024 * 1024;
@@ -69,14 +69,6 @@ const ms = (n: number) => Math.round(n * 10) / 10;
 const span = (from?: number, to?: number) =>
   from !== undefined && to !== undefined ? ms(to - from) : undefined;
 
-// Os timeouts do undici ficam desligados: quem manda é options.timeoutMs (e, no SSE, a web).
-export const agent = new Agent({ headersTimeout: 0, bodyTimeout: 0, connect: timedConnector() });
-const insecureAgent = new Agent({
-  headersTimeout: 0,
-  bodyTimeout: 0,
-  connect: timedConnector({ rejectUnauthorized: false }),
-});
-
 // Cookie jar por coleção + environment. Só em memória: vive enquanto a api roda (inclusive
 // na bandeja) e nunca vai para o disco.
 const jars = new Map<string, CookieJar>();
@@ -91,6 +83,67 @@ export const clearJar = (key: string) => jars.delete(key);
 export const fail = (status: number, message: string): never => {
   throw Object.assign(new Error(message), { status });
 };
+
+// PEM de cert/key/ca. Path relativo = dentro do workspace (resolve() barra a fuga). Path absoluto
+// vale como está, mesmo fora do workspace: quem configura é o próprio usuário, o arquivo só é lido
+// (nunca volta para a web) e a chave privada costuma morar fora do repositório versionado.
+async function pem(file?: string) {
+  if (!file) return undefined;
+  const abs = path.isAbsolute(file) ? file : await resolve(file);
+  return readFile(abs, "utf8").catch(() => fail(400, `could not read certificate file: ${file}`));
+}
+
+/** Opções TLS do cliente (as do `tls.connect`), com os PEM já lidos. Servem ao undici e ao `ws`. */
+export async function tlsOptions(net: Network & { insecureTls?: boolean } = {}) {
+  const tls = {
+    cert: await pem(net.cert),
+    key: await pem(net.key),
+    ca: await pem(net.ca),
+    passphrase: net.passphrase || undefined,
+    rejectUnauthorized: net.insecureTls ? false : undefined,
+  };
+  return Object.fromEntries(Object.entries(tls).filter(([, v]) => v !== undefined)) as typeof tls;
+}
+
+const MAX_DISPATCHERS = 16;
+const dispatchers = new Map<string, Dispatcher>();
+
+/**
+ * Um dispatcher por configuração (proxy, certificados, insecureTls), reaproveitado entre envios.
+ * Sem proxy configurado valem HTTP_PROXY/HTTPS_PROXY/NO_PROXY do ambiente, como no curl.
+ * Os timeouts do undici ficam desligados: quem manda é options.timeoutMs (e, no SSE, a web).
+ */
+export async function dispatcher(net: Network & { insecureTls?: boolean } = {}) {
+  const tls = await tlsOptions(net);
+  const proxy = net.proxy?.trim() || undefined;
+  const noProxy = net.noProxy?.trim() || undefined;
+  const id = JSON.stringify([proxy, noProxy, tls]); // com o conteúdo dos PEM: arquivo trocado = outro
+  let found = dispatchers.get(id);
+  if (found) return found;
+  try {
+    // connect: TLS direto com o destino; requestTls: o mesmo TLS dentro do túnel do proxy.
+    found = new EnvHttpProxyAgent({
+      headersTimeout: 0,
+      bodyTimeout: 0,
+      httpProxy: proxy,
+      httpsProxy: proxy,
+      noProxy,
+      connect: timedConnector(tls),
+      requestTls: tls,
+    });
+  } catch (err) {
+    return fail(400, `invalid proxy: ${(err as Error).message}`);
+  }
+  dispatchers.set(id, found);
+  // ponytail: descarta o mais antigo por ordem de criação, não o menos usado; basta para poucas
+  // configurações. close() espera as requests em andamento terminarem.
+  if (dispatchers.size > MAX_DISPATCHERS) {
+    const [oldest, old] = dispatchers.entries().next().value as [string, Dispatcher];
+    dispatchers.delete(oldest);
+    old.close().catch(() => {});
+  }
+  return found;
+}
 
 /** Com responseHeaders "raw": [nome, valor, nome, valor…], na ordem e na caixa originais. */
 export function headerPairs(raw: string[]) {
@@ -162,11 +215,7 @@ export async function send(
   signal: AbortSignal,
   jar?: CookieJar,
 ): Promise<HttpResponse> {
-  const {
-    timeoutMs = DEFAULT_TIMEOUT_MS,
-    followRedirects = true,
-    insecureTls = false,
-  } = req.options ?? {};
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, followRedirects = true, ...net } = req.options ?? {};
   const timeout = AbortSignal.timeout(timeoutMs);
   const abort = AbortSignal.any([signal, timeout]);
 
@@ -183,6 +232,7 @@ export async function send(
   if (type && !has("content-type")) headers.push(["content-type", type]);
   if (!has("user-agent")) headers.push(["user-agent", "patchbay"]);
   if (!has("accept")) headers.push(["accept", "*/*"]);
+  const via = await dispatcher(net);
 
   const start = performance.now();
   try {
@@ -196,7 +246,7 @@ export async function send(
         headers: cookie ? [...headers.flat(), "cookie", cookie] : headers.flat(),
         body: data,
         signal: abort,
-        dispatcher: insecureTls ? insecureAgent : agent,
+        dispatcher: via,
         responseHeaders: "raw",
       });
       tracing = undefined;
