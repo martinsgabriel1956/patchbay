@@ -25,7 +25,11 @@ import { RequestEditor } from "@/features/request-editor/request-editor";
 import { closeTab, RequestTabs } from "@/features/request-editor/request-tabs";
 import { activeTab, useRequest, where } from "@/features/request-editor/store";
 import { STAMPS } from "@/features/response-viewer/diagnose";
-import { ResponseViewer } from "@/features/response-viewer/response-viewer";
+import {
+  focusResponseFilter,
+  ResponseViewer,
+  searchResponse,
+} from "@/features/response-viewer/response-viewer";
 import { SettingsDialog, THEMES } from "@/features/settings/settings-dialog";
 import { useApplySettings, useSettings } from "@/features/settings/store";
 import {
@@ -162,23 +166,26 @@ export function App() {
                       ? () => closeTab(activeTab(req).key)
                       : k === "l"
                         ? focusUrl
-                        : k === "/"
-                          ? () => setHelp((open) => !open)
-                          : e.key === "Tab"
-                            ? () => cycleTab(e.shiftKey ? -1 : 1)
-                            : /^[1-9]$/.test(e.key)
-                              ? () => {
-                                  const { tree, contents } = useWorkspace.getState();
-                                  const entry = channels(tree, contents).find(
-                                    (c) => c.channel === +e.key,
-                                  );
-                                  if (entry) openChannel(entry.path);
-                                  else
-                                    useWorkspace.setState({
-                                      notice: `Nenhum canal ${e.key.padStart(2, "0")}.`,
-                                    });
-                                }
-                              : null;
+                        : // Dentro de um editor, Ctrl F é a busca dele (CodeMirror); fora, a da resposta.
+                          k === "f" && !(e.target as HTMLElement).closest?.(".cm-editor")
+                          ? searchResponse
+                          : k === "/"
+                            ? () => setHelp((open) => !open)
+                            : e.key === "Tab"
+                              ? () => cycleTab(e.shiftKey ? -1 : 1)
+                              : /^[1-9]$/.test(e.key)
+                                ? () => {
+                                    const { tree, contents } = useWorkspace.getState();
+                                    const entry = channels(tree, contents).find(
+                                      (c) => c.channel === +e.key,
+                                    );
+                                    if (entry) openChannel(entry.path);
+                                    else
+                                      useWorkspace.setState({
+                                        notice: `Nenhum canal ${e.key.padStart(2, "0")}.`,
+                                      });
+                                  }
+                                : null;
       if (!action) return;
       e.preventDefault();
       action();
@@ -279,7 +286,7 @@ export function App() {
                 {realtime ? <RealtimeEditor key={active} /> : <RequestEditor key={active} />}
               </div>
             </section>
-            <section aria-label="Resposta" className="min-h-0">
+            <section id="response" aria-label="Resposta" className="min-h-0">
               {realtime ? <RealtimePanel /> : <ResponseViewer key={active} />}
             </section>
           </div>
@@ -315,6 +322,16 @@ export function App() {
               Reabrir aba fechada <CommandShortcut>{mod("Shift T")}</CommandShortcut>
             </CommandItem>
             {!realtime && <CommandItem onSelect={run(copyCurl)}>Copiar como cURL</CommandItem>}
+            {!realtime && (
+              <>
+                <CommandItem onSelect={run(() => setTimeout(searchResponse))}>
+                  Buscar na resposta <CommandShortcut>{mod("F")}</CommandShortcut>
+                </CommandItem>
+                <CommandItem onSelect={run(() => setTimeout(focusResponseFilter))}>
+                  Filtrar o JSON da resposta
+                </CommandItem>
+              </>
+            )}
           </CommandGroup>
 
           {list.length > 0 && (

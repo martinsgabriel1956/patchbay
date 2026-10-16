@@ -3,6 +3,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { foldGutter, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { search, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState } from "@codemirror/state";
 import {
   Decoration,
@@ -45,6 +46,67 @@ const theme = EditorView.theme({
     border: "none",
     borderRight: "1px solid var(--line)",
   },
+  // Busca (Ctrl F): ocorrência com a régua inset de tinta, a atual invertida (DESIGN.md › Seleção).
+  ".cm-searchMatch": { backgroundColor: "transparent", boxShadow: "inset 0 -2px var(--ink)" },
+  ".cm-searchMatch-selected, .cm-searchMatch-selected *": {
+    backgroundColor: "var(--ink)",
+    color: "var(--bg)",
+  },
+  ".cm-panels": { backgroundColor: "var(--bg)", color: "var(--ink)" },
+  ".cm-panels-top": { borderBottom: "1px solid var(--line)" },
+  ".cm-panel.cm-search": {
+    padding: "8px 40px 8px 18px",
+    "& input, & button, & label": { margin: "3px 10px 3px 0" },
+    "& label": { fontSize: "12px", color: "var(--mute)" },
+    "& input[type=checkbox]": { margin: "0 6px 0 0", accentColor: "var(--ink)" },
+    "& [name=close]": { top: "8px", right: "14px", color: "var(--mute)", fontSize: "17px" },
+  },
+  ".cm-textfield": {
+    border: "1px solid var(--line)",
+    backgroundColor: "var(--bg)",
+    color: "var(--ink)",
+    fontFamily: "'Red Hat Mono', ui-monospace, monospace",
+    fontSize: "13px",
+    padding: "4px 10px",
+    outlineOffset: "-2px",
+  },
+  ".cm-button, .cm-panel label": {
+    fontWeight: "700",
+    fontVariationSettings: "'wdth' 70",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+  },
+  ".cm-button": {
+    backgroundImage: "none",
+    backgroundColor: "transparent",
+    border: "1px solid var(--mute)",
+    borderRadius: "0",
+    fontSize: "12px",
+    padding: "4px 12px",
+    "&:hover": { boxShadow: "inset 0 -2px var(--ink)" },
+    "&:active": { backgroundImage: "none", backgroundColor: "var(--ink)", color: "var(--bg)" },
+  },
+});
+
+/** Textos da busca do CodeMirror em pt-BR, como o resto da interface. */
+const phrases = EditorState.phrases.of({
+  Find: "Buscar",
+  next: "próximo",
+  previous: "anterior",
+  all: "todos",
+  "match case": "maiúsculas",
+  regexp: "regex",
+  "by word": "palavra inteira",
+  close: "Fechar",
+  Replace: "Substituir",
+  replace: "substituir",
+  "replace all": "substituir todos",
+  "current match": "Ocorrência atual",
+  "on line": "na linha",
+  "replaced match on line $": "Substituído na linha $",
+  "replaced $ matches": "$ ocorrências substituídas",
+  "Go to line": "Ir para a linha",
+  go: "ir",
 });
 
 /** {{var}} com a mesma marcação do VarInput; o title mostra o valor (segredo mascarado). */
@@ -95,7 +157,9 @@ export function CodeEditor(props: {
           lineNumbers(),
           foldGutter(),
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+          search({ top: true }),
+          phrases,
           syntaxHighlighting(highlight),
           EditorView.lineWrapping,
           EditorState.readOnly.of(readOnly),
