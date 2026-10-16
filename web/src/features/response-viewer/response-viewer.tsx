@@ -1,13 +1,14 @@
-import type { HttpResponse } from "@api/schemas";
-import { Fragment, useMemo, useState } from "react";
+import type { HttpResponse, JarCookie } from "@api/schemas";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
 import { ShortcutList } from "@/components/shortcuts";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import { useCurrentEnvironments } from "@/features/environments/env-bar";
-import { useEnvironments } from "@/features/environments/store";
+import { clearCookies, cookiesPath, useEnvironments } from "@/features/environments/store";
 import { activeTab, useRequest } from "@/features/request-editor/store";
 import { openHistory, when } from "@/features/sidebar/sidebar";
 import { useWorkspace } from "@/features/sidebar/store";
+import { api } from "@/lib/api-client";
 import { focusUrl, isMac, mod } from "@/lib/utils";
 import { diagnose, STAMPS } from "./diagnose";
 
@@ -280,6 +281,7 @@ function Response({ response }: { response: HttpResponse }) {
         <TabList aria-label="Partes da resposta">
           <Tab value="body">Body</Tab>
           <Tab value="headers">Headers {response.headers.length}</Tab>
+          <Tab value="cookies">Cookies</Tab>
         </TabList>
         <TabPanel value="body" className="p-0">
           <Body response={response} type={type} pretty={pretty} />
@@ -295,7 +297,51 @@ function Response({ response }: { response: HttpResponse }) {
             ))}
           </dl>
         </TabPanel>
+        <TabPanel value="cookies">
+          <JarCookies />
+        </TabPanel>
       </TabsRoot>
+    </div>
+  );
+}
+
+/** Cookie jar do environment atual (na api, só em memória). A aba monta a cada abertura. */
+function JarCookies() {
+  const { collection, env } = useCurrentEnvironments();
+  const path = cookiesPath(collection, env);
+  const [cookies, setCookies] = useState<JarCookie[]>();
+  useEffect(() => {
+    api(path)
+      .then((res) => res.json())
+      .then(setCookies, () => setCookies([]));
+  }, [path]);
+  if (!cookies) return null;
+  const clear = () => clearCookies(collection, env).then(() => setCookies([]));
+  const count = cookies.length === 1 ? "1 cookie" : `${cookies.length || "Nenhum"} cookies`;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] text-mute">
+          {count} no jar de {env ?? "sem environment"}
+        </span>
+        {cookies.length > 0 && (
+          <button type="button" onClick={clear} className={`${button} ml-auto`}>
+            Limpar cookies
+          </button>
+        )}
+      </div>
+      {cookies.length > 0 && (
+        <dl className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-px border border-line bg-line font-mono text-[13px]">
+          {cookies.map((c) => (
+            <Fragment key={`${c.domain}${c.path}${c.name}`}>
+              <dt className="bg-bg px-2.5 py-1 break-all text-ink">
+                {c.name} <span className="text-mute">{c.domain + c.path}</span>
+              </dt>
+              <dd className="bg-bg px-2.5 py-1 break-all text-ink-2">{c.value}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }

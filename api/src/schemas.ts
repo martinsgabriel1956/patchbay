@@ -54,6 +54,14 @@ export const HttpRequest = z.object({
 });
 export type HttpRequest = z.infer<typeof HttpRequest>;
 
+/** Corpo do POST /send: a request e a chave do cookie jar ("<coleção>/<environment>").
+ *  Sem jar, nada de cookies automáticos. */
+export const SendRequest = HttpRequest.extend({ jar: z.string().optional() });
+export type SendRequest = z.infer<typeof SendRequest>;
+
+/** Item de `GET /cookies?jar=`. */
+export type JarCookie = { name: string; value: string; domain: string; path: string };
+
 export const RealtimeRequest = z.object({
   id: z.string(),
   name: z.string(),

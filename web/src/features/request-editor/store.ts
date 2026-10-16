@@ -1,7 +1,7 @@
 import type { Auth, Body, HttpRequest, HttpResponse, KV, RealtimeRequest } from "@api/schemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { requestContext, useEnvironments } from "@/features/environments/store";
+import { jarKey, requestContext, useEnvironments } from "@/features/environments/store";
 import { useRealtime } from "@/features/realtime/store";
 import { channelOf, files, json, nextChannel, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
@@ -244,9 +244,11 @@ export const useRequest = create<RequestStore>()(
           }
           // Variáveis e auth resolvidas aqui; o arquivo continua com os {{var}}.
           let req: HttpRequest;
+          let jar: string;
           try {
-            const { scope, parents } = await requestContext(where(tab));
+            const { collection, env, scope, parents } = await requestContext(where(tab));
             req = prepare(toRequest(tab), scope.vars, parents);
+            jar = jarKey(collection, env);
           } catch (err) {
             const message = (err as Error).message;
             patch(tab.key, { result: { state: "failed", reason: "error", message } });
@@ -266,7 +268,7 @@ export const useRequest = create<RequestStore>()(
             const res = await api("/send", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify(req),
+              body: JSON.stringify({ ...req, jar }),
               signal: controller.signal,
             });
             const response: HttpResponse = await res.json();
