@@ -45,6 +45,9 @@ export type Draft = {
   protocols: string[];
 };
 
+/** Resposta recebida nesta sessão, para comparar (Comparar com…). Só em memória. */
+export type Past = { at: string; url: string; response: HttpResponse };
+
 /** Aba aberta: o draft em edição, de onde veio no disco e o texto da última gravação. */
 export type Tab = Draft & {
   key: string;
@@ -56,6 +59,8 @@ export type Tab = Draft & {
   result: Result;
   /** O arquivo mudou no disco (fora do app) com alterações não salvas na aba: o usuário escolhe. */
   changedOnDisk?: boolean;
+  /** Últimas respostas da aba, a mais nova (a da tela) primeiro. Nunca vão para o disco. */
+  past?: Past[];
 };
 
 /** O arquivo que define o contexto da aba (variáveis, auth herdada, pasta para salvar). */
@@ -66,6 +71,8 @@ type RequestStore = {
   active: string;
   /** Conta envios terminados; o histórico recarrega quando muda. */
   sends: number;
+  /** Diálogo "Comparar com…" aberto (resposta da aba ativa). */
+  comparing: boolean;
   set: (patch: Partial<Draft>) => void;
   setUrl: (url: string) => void;
   setParams: (params: KV[]) => void;
@@ -228,6 +235,7 @@ export const useRequest = create<RequestStore>()(
         tabs: [first],
         active: first.key,
         sends: 0,
+        comparing: false,
 
         set: (p) => patch(current().key, p),
         setUrl: (url) =>
@@ -272,7 +280,12 @@ export const useRequest = create<RequestStore>()(
               signal: controller.signal,
             });
             const response: HttpResponse = await res.json();
-            patch(tab.key, { result: { state: "done", response } });
+            // ponytail: até 5 por aba (body de até 5 MB cada); um limite global se pesar.
+            const past = [
+              { at: new Date().toISOString(), url: req.url, response },
+              ...(tab.past ?? []),
+            ];
+            patch(tab.key, { result: { state: "done", response }, past: past.slice(0, 5) });
             // Salva: vira `{{nome.res.…}}` para as outras requests da coleção.
             const { path } = tab;
             if (path)
@@ -421,7 +434,7 @@ export const useRequest = create<RequestStore>()(
       // Abas e rascunhos sobrevivem a recarregar a página e a reabrir o app. Respostas não.
       name: "patchbay.tabs",
       partialize: ({ tabs, active }) => ({
-        tabs: tabs.map((t) => ({ ...t, result: { state: "idle" } as Result })),
+        tabs: tabs.map((t) => ({ ...t, result: { state: "idle" } as Result, past: undefined })),
         active,
       }),
       // Abas salvas antes da Fase 4 não têm kind: valem como "http".
