@@ -465,7 +465,7 @@ export function App() {
               Ir para a URL <CommandShortcut>{mod("L")}</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={run(() => useWorkspace.setState({ importing: true }))}>
-              Importar coleção (Postman, Insomnia)
+              Importar coleção (Postman, Insomnia, OpenAPI)
             </CommandItem>
             {THEMES.map(([value, name]) => (
               <CommandItem key={value} onSelect={run(() => update({ theme: value }))}>

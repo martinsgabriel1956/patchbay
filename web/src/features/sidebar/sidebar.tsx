@@ -308,7 +308,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => useWorkspace.setState({ importing: true })}
-            title="Importar coleção do Postman ou do Insomnia"
+            title="Importar coleção do Postman, do Insomnia ou de uma spec OpenAPI"
             className="label px-2 py-1 text-[12px] outline-offset-[-2px] hover:shadow-[inset_0_-2px_var(--ink)]"
           >
             Importar
