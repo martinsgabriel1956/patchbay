@@ -1,4 +1,4 @@
-// Importar coleção Postman v2.1 / Insomnia v4: arquivo escolhido ou JSON colado. Grava no
+// Importar coleção Postman v2.1 / Insomnia v4 / OpenAPI: arquivo escolhido ou texto colado. Grava no
 // workspace (layout do PLANNING §8) e mostra o resumo, com o que ficou de fora.
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -56,7 +56,9 @@ export function ImportDialog() {
     <Dialog open={!!open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto p-[18px] sm:max-w-xl">
         <DialogTitle>Importar coleção</DialogTitle>
-        <DialogDescription>Postman v2.1 ou Insomnia (export v4, JSON).</DialogDescription>
+        <DialogDescription>
+          Postman v2.1, Insomnia (export v4, JSON) ou OpenAPI 3.x / Swagger 2.0 (JSON ou YAML).
+        </DialogDescription>
         {summary ? (
           <div className="grid gap-3.5">
             {summary.map((s) => (
@@ -101,7 +103,7 @@ export function ImportDialog() {
               <span className="label text-[12px] text-mute">Arquivo</span>
               <input
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.yaml,.yml,application/json"
                 onChange={(e) =>
                   e.target.files?.[0]?.text().then(setText, (err) => setError(err.message))
                 }
@@ -109,7 +111,7 @@ export function ImportDialog() {
               />
             </label>
             <label className="grid gap-1.5">
-              <span className="label text-[12px] text-mute">Ou cole o JSON</span>
+              <span className="label text-[12px] text-mute">Ou cole o conteúdo</span>
               <textarea
                 value={text}
                 spellCheck={false}

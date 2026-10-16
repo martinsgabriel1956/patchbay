@@ -43,8 +43,9 @@ export function ShortcutList() {
         até você escolher outro environment, definir o valor ou enviar assim mesmo.
       </p>
       <p className="max-w-[64ch] text-[15px] text-ink-2">
-        Só na palette: nova request WebSocket ou SSE, copiar como cURL, importar do Postman ou
-        Insomnia, duplicar, nova pasta, tema. Colar um comando curl na URL preenche a request.
+        Só na palette: nova request WebSocket ou SSE, copiar como cURL, importar do Postman,
+        Insomnia ou OpenAPI, duplicar, nova pasta, tema. Colar um comando curl na URL preenche a
+        request.
       </p>
     </div>
   );

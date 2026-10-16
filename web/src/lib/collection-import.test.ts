@@ -257,3 +257,165 @@ describe("importCollections › Insomnia v4", () => {
     expect(() => importCollections('{"a":1}')).toThrow(/Postman|Insomnia/);
   });
 });
+
+describe("importCollections › OpenAPI", () => {
+  // YAML de propósito: é o formato mais comum de spec.
+  const yaml = `
+openapi: 3.0.3
+info: { title: Pet/Store }
+servers:
+  - url: https://{env}.pets.dev/v1/
+    description: Produção
+    variables: { env: { default: api } }
+  - url: /local
+security: [{ bearer: [] }]
+paths:
+  /pets/{petId}:
+    parameters:
+      - { name: petId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [pets]
+      summary: Buscar pet
+      parameters:
+        - { name: fields, in: query, schema: { type: string, example: name } }
+        - { name: page, in: query, required: true, schema: { type: integer, default: 1 } }
+        - { name: X-Trace, in: header, schema: { type: string } }
+        - { name: sid, in: cookie, schema: { type: string } }
+    put:
+      tags: [pets]
+      operationId: updatePet
+      security: [{ basic: [] }]
+      requestBody:
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/Pet" } }
+  /upload:
+    post:
+      security: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                note: { type: string, example: oi }
+                file: { type: string, format: binary }
+  /login:
+    post:
+      tags: [auth]
+      security: [{ oauth: [] }]
+      requestBody:
+        $ref: "#/components/requestBodies/Login"
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+    basic: { type: http, scheme: basic }
+    oauth: { type: oauth2, flows: {} }
+  requestBodies:
+    Login:
+      content:
+        application/x-www-form-urlencoded:
+          schema: { properties: { user: { type: string, example: ana } } }
+  schemas:
+    Pet:
+      allOf:
+        - { $ref: "#/components/schemas/Base" }
+        - properties:
+            name: { type: string }
+            tags: { type: array, items: { type: string, enum: [a, b] } }
+            parent: { $ref: "#/components/schemas/Pet" }
+            kids: { type: array, items: { $ref: "#/components/schemas/Pet" } }
+    Base:
+      properties: { id: { type: integer }, ok: { type: boolean } }
+`;
+
+  it("tags viram pastas, servidores viram environments, $ref e ciclo no body, auth", () => {
+    const [col] = importCollections(yaml);
+    // biome-ignore lint/suspicious/noExplicitAny: os testes leem campos do JSON gerado
+    const byPath = Object.fromEntries(col.files) as Record<string, any>;
+    expect(col.name).toBe("Pet-Store");
+    expect(Object.keys(byPath)).toEqual([
+      "collection.json",
+      "environments/Produção.json",
+      "environments/servidor 2.json",
+      "pets/",
+      "pets/Buscar pet.json",
+      "pets/updatePet.json",
+      "POST -upload.json",
+      "auth/",
+      "auth/POST -login.json",
+    ]);
+    expect(byPath["collection.json"]).toEqual({
+      name: "Pet-Store",
+      auth: { type: "bearer", token: "{{token}}" },
+    });
+    expect(byPath["environments/Produção.json"]).toEqual({
+      name: "Produção",
+      vars: [on("baseUrl", "https://api.pets.dev/v1")],
+    });
+    expect(byPath["pets/Buscar pet.json"]).toMatchObject({
+      method: "GET",
+      url: "{{baseUrl}}/pets/{{petId}}?page=1",
+      params: [{ key: "fields", value: "name", enabled: false }, on("page", "1")],
+      headers: [{ key: "X-Trace", value: "", enabled: false }],
+      body: { type: "none" },
+      auth: { type: "inherit" },
+    });
+    const put = byPath["pets/updatePet.json"];
+    expect(put.auth).toEqual({ type: "basic", username: "{{username}}", password: "{{password}}" });
+    // Pet → parent: Pet (ciclo) some do objeto; kids: [Pet] vira lista vazia.
+    expect(JSON.parse(put.body.content)).toEqual({
+      id: 0,
+      ok: false,
+      name: "string",
+      tags: ["a"],
+      kids: [],
+    });
+    expect(byPath["POST -upload.json"]).toMatchObject({
+      auth: { type: "none" },
+      body: {
+        type: "multipart",
+        fields: [on("note", "oi"), { key: "file", value: "", enabled: true, file: "" }],
+      },
+    });
+    expect(byPath["auth/POST -login.json"]).toMatchObject({
+      auth: { type: "inherit" },
+      body: { type: "form-urlencoded", fields: [on("user", "ana")] },
+    });
+    expect(col.skipped).toEqual([
+      'baseUrl "/local" sem host (complete no environment)',
+      "Buscar pet: parâmetros de cookie",
+      "POST /login: auth oauth2 (não suportada; ficou herdada)",
+    ]);
+  });
+
+  it("Swagger 2.0: host + basePath, apiKey global, body e formData", () => {
+    const { byPath } = files({
+      swagger: "2.0",
+      info: { title: "v2" },
+      host: "x.dev",
+      basePath: "/api",
+      securityDefinitions: { key: { type: "apiKey", name: "X-Key", in: "header" } },
+      security: [{ key: [] }],
+      paths: {
+        "/a": {
+          post: {
+            operationId: "criar",
+            parameters: [{ name: "b", in: "body", schema: { example: { a: 1 } } }],
+          },
+          put: { operationId: "enviar", parameters: [{ name: "f", in: "formData", type: "file" }] },
+        },
+      },
+    });
+    expect(byPath["collection.json"].auth).toEqual({
+      type: "apikey",
+      key: "X-Key",
+      value: "{{apiKey}}",
+      in: "header",
+    });
+    expect(byPath["environments/padrão.json"].vars).toEqual([on("baseUrl", "https://x.dev/api")]);
+    expect(byPath["criar.json"].body).toEqual({ type: "json", content: '{\n  "a": 1\n}' });
+    expect(byPath["enviar.json"].body).toEqual({
+      type: "multipart",
+      fields: [{ key: "f", value: "", enabled: true, file: "" }],
+    });
+  });
+});

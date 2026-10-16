@@ -38,7 +38,7 @@ type Workspace = {
   contents: Record<string, unknown>;
   history: HistoryEntry[];
   error?: string;
-  /** Diálogo de importar coleção (Postman/Insomnia) aberto. */
+  /** Diálogo de importar coleção (Postman/Insomnia/OpenAPI) aberto. */
   importing?: boolean;
   /** Pedido de salvar a aba ativa (Ctrl S, palette); a sidebar atende e pergunta o nome se faltar. */
   saving?: boolean;
