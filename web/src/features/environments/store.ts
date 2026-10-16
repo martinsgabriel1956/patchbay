@@ -3,14 +3,14 @@
 //   <coleção>/environments/<nome>.json { name, vars }
 //   <coleção>/.env.local.json          { "<environment>": KV[] }  segredos, gitignored
 // Coleção = pasta do primeiro nível. Aqui só fica o environment ativo de cada coleção (localStorage)
-// e o cache dos segredos (memória, nunca localStorage).
-import type { Auth, Environment, KV, TreeEntry } from "@api/schemas";
+// e o cache dos segredos e das últimas respostas (memória, nunca localStorage).
+import type { Auth, Environment, HttpResponse, KV, TreeEntry } from "@api/schemas";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { files, useWorkspace } from "@/features/sidebar/store";
-import { type Parent, type Vars, varsFrom } from "@/lib/interpolate";
+import { type Parent, responseVars, type Vars, varsFrom } from "@/lib/interpolate";
 
 export type Collection = { name?: string; auth?: Auth; headers?: KV[]; vars?: KV[] };
 export type Secrets = Record<string, KV[]>;
@@ -23,6 +23,8 @@ type EnvStore = {
   /** Última coleção usada: vale para abas ainda não salvas. */
   last?: string;
   secrets: Record<string, Secrets>;
+  /** arquivo da request → última resposta (`{{nome.res.…}}`). Some ao fechar o app. */
+  responses: Record<string, HttpResponse>;
   /** Pasta cujo diálogo de configuração está aberto. */
   editing?: string;
   /** Menu de environments da fita aberto (clique na fita, "Escolher environment"). */
@@ -41,6 +43,7 @@ export const useEnvironments = create<EnvStore>()(
     (set, get) => ({
       active: {},
       secrets: {},
+      responses: {},
       edit: (editing) => set({ editing }),
       select: (collection, env) =>
         set((s) => {
@@ -105,6 +108,7 @@ function context(
   contents: Record<string, unknown>,
   active: Record<string, string>,
   secrets: Record<string, Secrets>,
+  responses: Record<string, HttpResponse>,
 ): Context {
   if (!collection) return { scope: { vars: {}, display: {} }, parents: [] };
   const env = active[collection];
@@ -113,7 +117,16 @@ function context(
   const local = env ? secrets[collection]?.[env] : undefined;
   const vars = varsFrom(col?.vars, envFile?.vars);
   const hidden = varsFrom(local);
+  // Respostas da mesma coleção, pelo nome (`login`) e pelo caminho na coleção (`auth/login`).
+  const res: Vars = {};
+  for (const [file, response] of Object.entries(responses)) {
+    if (!file.startsWith(`${collection}/`)) continue;
+    const rel = file.slice(collection.length + 1).replace(/\.json$/, "");
+    Object.assign(res, responseVars(rel.split("/").pop() ?? rel, response));
+    if (rel.includes("/")) Object.assign(res, responseVars(rel, response));
+  }
   const display = {
+    ...res,
     ...vars,
     ...Object.fromEntries(Object.keys(hidden).map((k) => [k, "•••••• (segredo)"])),
   };
@@ -125,7 +138,7 @@ function context(
     folder,
     ...object<Collection>(contents[`${folder}/collection.json`]),
   }));
-  return { collection, env, scope: { vars: { ...vars, ...hidden }, display }, parents };
+  return { collection, env, scope: { vars: { ...res, ...vars, ...hidden }, display }, parents };
 }
 
 /** Coleção da request e seus environments, fora do React (atalho Ctrl E). */
@@ -137,11 +150,12 @@ export function collectionEnvs(path?: string) {
 
 /** Para enviar: garante os segredos carregados antes de resolver. */
 export async function requestContext(path?: string) {
-  const { last, active, loadSecrets } = useEnvironments.getState();
+  const { last, active, responses, loadSecrets } = useEnvironments.getState();
   const { tree, contents } = useWorkspace.getState();
   const collection = pickCollection(path, last, tree);
   if (collection) await loadSecrets(collection);
-  return context(path, collection, contents, active, useEnvironments.getState().secrets);
+  const { secrets } = useEnvironments.getState();
+  return context(path, collection, contents, active, secrets, responses);
 }
 
 /** Mesmo contexto, reativo, para destacar variáveis e mostrar a auth herdada. */
@@ -149,11 +163,16 @@ export function useRequestContext(path?: string): Context {
   const { tree, contents } = useWorkspace(
     useShallow((s) => ({ tree: s.tree, contents: s.contents })),
   );
-  const { last, active, secrets } = useEnvironments(
-    useShallow((s) => ({ last: s.last, active: s.active, secrets: s.secrets })),
+  const { last, active, secrets, responses } = useEnvironments(
+    useShallow((s) => ({
+      last: s.last,
+      active: s.active,
+      secrets: s.secrets,
+      responses: s.responses,
+    })),
   );
   return useMemo(() => {
     const collection = pickCollection(path, last, tree);
-    return context(path, collection, contents, active, secrets);
-  }, [path, last, tree, contents, active, secrets]);
+    return context(path, collection, contents, active, secrets, responses);
+  }, [path, last, tree, contents, active, secrets, responses]);
 }

@@ -1,4 +1,4 @@
-import type { HttpRequest } from "@api/schemas";
+import type { HttpRequest, HttpResponse } from "@api/schemas";
 import { describe, expect, it } from "vitest";
 import {
   effectiveAuth,
@@ -6,6 +6,7 @@ import {
   parts,
   prepare,
   prepareRealtime,
+  responseVars,
   unresolved,
   varsFrom,
 } from "./interpolate";
@@ -182,5 +183,51 @@ describe("unresolved", () => {
     const req = { url: "{{baseUrl}}/x?q={{ q }}", headers: [{ key: "X", value: "{{baseUrl}}" }] };
     expect(unresolved(req)).toEqual(["baseUrl", "q"]);
     expect(unresolved({ url: "http://a/{{}}" })).toEqual([]);
+  });
+});
+
+describe("responseVars", () => {
+  const response = (patch: Partial<HttpResponse> = {}): HttpResponse => ({
+    status: 200,
+    statusText: "OK",
+    headers: [
+      ["X-CSRF", "abc"],
+      ["set-cookie", "a=1"],
+      ["set-cookie", "b=2"],
+    ],
+    body: JSON.stringify({ token: "t0k", n: 0, ok: false, none: null, items: [{ id: 7 }] }),
+    isBinary: false,
+    truncated: false,
+    timeMs: 1,
+    sizeBytes: 1,
+    decodedSizeBytes: 1,
+    ...patch,
+  });
+
+  it("status, headers (minúsculo, repetido junta) e body JSON até as folhas, com índice", () => {
+    const vars = responseVars("login", response());
+    const text =
+      "{{login.res.status}} {{login.res.headers.x-csrf}} {{login.res.headers.set-cookie}} " +
+      "{{login.res.body.token}} {{login.res.body.items.0.id}} {{login.res.body.n}} " +
+      "{{login.res.body.ok}} {{login.res.body.none}}";
+    expect(interpolate(text, vars)).toBe("200 abc a=1, b=2 t0k 7 0 false null");
+    expect(vars["login.res.body"]).toBe(response().body);
+  });
+
+  it("o que não existe continua sem valor (fica em vermelho e bloqueia o envio)", () => {
+    const vars = responseVars("login", response());
+    const req = prepare(request({ url: "{{login.res.body.items}}/{{login.res.body.nope}}" }), vars);
+    expect(unresolved(req)).toEqual(["login.res.body.items", "login.res.body.nope"]);
+    expect(Object.hasOwn(vars, "outra.res.status")).toBe(false);
+  });
+
+  it("body que não é JSON (ou binário) só como texto", () => {
+    expect(responseVars("r", response({ body: "oi", headers: [] }))).toEqual({
+      "r.res.status": "200",
+      "r.res.body": "oi",
+    });
+    expect(responseVars("r", response({ body: "AAEC", isBinary: true, headers: [] }))).toEqual({
+      "r.res.status": "200",
+    });
   });
 });
