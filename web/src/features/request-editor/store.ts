@@ -54,6 +54,8 @@ export type Tab = Draft & {
   origin?: string;
   saved: string;
   result: Result;
+  /** O arquivo mudou no disco (fora do app) com alterações não salvas na aba: o usuário escolhe. */
+  changedOnDisk?: boolean;
 };
 
 /** O arquivo que define o contexto da aba (variáveis, auth herdada, pasta para salvar). */
@@ -85,6 +87,12 @@ type RequestStore = {
   moved: (from: string, to: string) => void;
   /** O arquivo (ou pasta) foi para a lixeira: as abas ficam abertas, sem path e não salvas. */
   removed: (path: string) => void;
+  /** Algo mudou no disco (git pull, editor): confere toda aba com arquivo. Limpa recarrega
+   *  calada; com alteração, fica marcada; apagado vira como o removed. */
+  diskChanged: () => Promise<void>;
+  /** Aba marcada: troca as alterações pelo que está no disco, ou fica com elas. */
+  reload: (key: string) => Promise<void>;
+  keep: (key: string) => void;
 };
 
 const blank = (kind: Draft["kind"] = "http"): Draft => ({
@@ -193,6 +201,16 @@ const newTab = (draft: Draft, path?: string): Tab => ({
   saved: serialize(draft),
   result: { state: "idle" },
 });
+
+/** O arquivo como draft; null se o JSON não vale (editado pela metade, conflito de merge). */
+const readDraft = async (path: string) => {
+  const text = await files.read(path);
+  try {
+    return fromRequest(JSON.parse(text));
+  } catch {
+    return null;
+  }
+};
 
 const inflight = new Map<string, AbortController>();
 /** Abas fechadas nesta sessão, a última no fim (Ctrl Shift T). */
@@ -326,7 +344,14 @@ export const useRequest = create<RequestStore>()(
           const id = same ? tab.id : crypto.randomUUID();
           const text = serialize({ ...tab, id, name, channel });
           await files.write(target, text);
-          patch(tab.key, { path: target, id, name, channel, saved: text });
+          patch(tab.key, {
+            path: target,
+            id,
+            name,
+            channel,
+            saved: text,
+            changedOnDisk: undefined,
+          });
           await useWorkspace.getState().load();
         },
 
@@ -347,10 +372,40 @@ export const useRequest = create<RequestStore>()(
           setState((s) => ({
             tabs: s.tabs.map((t) =>
               t.path === path || t.path?.startsWith(`${path}/`)
-                ? { ...t, path: undefined, saved: "" }
+                ? { ...t, path: undefined, saved: "", changedOnDisk: undefined }
                 : t,
             ),
           })),
+
+        // Todas, não só os paths do aviso: um rename (temp → arquivo) pode chegar só com o temp.
+        diskChanged: async () => {
+          for (const { key, path } of get().tabs) {
+            if (!path) continue;
+            const draft = await readDraft(path).catch((err: { status?: number }) =>
+              err.status === 404 ? ("gone" as const) : undefined,
+            );
+            const tab = get().tabs.find((t) => t.key === key);
+            // api fora, ou a aba fechou/mudou de arquivo enquanto lia.
+            if (draft === undefined || tab?.path !== path) continue;
+            if (draft === "gone") {
+              get().removed(path);
+              useWorkspace.setState({ notice: `${baseName(path)} foi apagado do disco` });
+              continue;
+            }
+            const text = draft && serialize(draft);
+            if (text === tab.saved) continue; // o que a aba já tem (inclui a própria gravação)
+            if (draft && !isDirty(tab)) patch(key, { ...draft, saved: serialize(draft) });
+            else patch(key, { changedOnDisk: true });
+          }
+        },
+        reload: async (key) => {
+          const path = get().tabs.find((t) => t.key === key)?.path;
+          if (!path) return;
+          const draft = await readDraft(path);
+          if (!draft) throw new Error(`JSON inválido em ${path}: corrija o arquivo à mão.`);
+          patch(key, { ...draft, saved: serialize(draft), changedOnDisk: undefined });
+        },
+        keep: (key) => patch(key, { changedOnDisk: undefined }),
       };
     },
     {

@@ -1,5 +1,5 @@
 // Abas das requests abertas, acima do editor. Mesmo desenho das abas do DESIGN.md (ativa em
-// tinta com régua de 2px); "•" marca o que ainda não foi salvo no disco.
+// tinta com régua de 2px); "•" marca o que ainda não foi salvo no disco e "↻" o que mudou nele.
 
 import { useEffect, useRef } from "react";
 import { confirm } from "@/components/ui/dialog";
@@ -125,6 +125,11 @@ export function RequestTabs() {
                 {dirty && (
                   <span className="font-mono text-[12px]" title="Não salvo">
                     •<span className="sr-only">não salvo</span>
+                  </span>
+                )}
+                {tab.changedOnDisk && (
+                  <span className="font-mono text-[12px]" title="Mudou no disco">
+                    ↻<span className="sr-only">mudou no disco</span>
                   </span>
                 )}
               </button>
