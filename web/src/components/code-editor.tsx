@@ -17,7 +17,7 @@ import {
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef } from "react";
 import type { Scope } from "@/features/environments/store";
-import { VAR } from "@/lib/interpolate";
+import { defined, VAR } from "@/lib/interpolate";
 
 const highlight = HighlightStyle.define([
   { tag: tags.propertyName, color: "var(--ink)" },
@@ -52,8 +52,11 @@ function varMarks(scope: Scope) {
   const decorator = new MatchDecorator({
     regexp: new RegExp(VAR.source, "g"),
     decoration: ([, name]) =>
-      Object.hasOwn(scope.vars, name)
-        ? Decoration.mark({ class: "cm-var", attributes: { title: scope.display[name] } })
+      defined(name, scope.vars)
+        ? Decoration.mark({
+            class: "cm-var",
+            attributes: { title: scope.display[name] ?? "gerada no envio" },
+          })
         : Decoration.mark({ class: "cm-var-missing", attributes: { title: "indefinida" } }),
   });
   return ViewPlugin.fromClass(

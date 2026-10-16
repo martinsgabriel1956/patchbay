@@ -5,7 +5,7 @@
 import { cn } from "cn";
 import { type ComponentProps, useRef } from "react";
 import type { Scope } from "@/features/environments/store";
-import { interpolate, parts } from "@/lib/interpolate";
+import { defined, interpolate, parts } from "@/lib/interpolate";
 
 const mark = "underline decoration-dashed decoration-1 underline-offset-4";
 
@@ -49,7 +49,7 @@ export function VarInput({
                   key={i}
                   className={cn(
                     mark,
-                    Object.hasOwn(scope?.vars ?? {}, p.name) ? "font-semibold" : "text-prod-text",
+                    defined(p.name, scope?.vars ?? {}) ? "font-semibold" : "text-prod-text",
                   )}
                 >
                   {p.text}

@@ -1,6 +1,7 @@
 import type { HttpRequest } from "@api/schemas";
 import { describe, expect, it } from "vitest";
 import {
+  defined,
   effectiveAuth,
   interpolate,
   parts,
@@ -174,6 +175,35 @@ describe("prepareRealtime", () => {
       headers: [on("X-Id", "42"), on("Authorization", "Bearer t")],
       protocols: ["graphql-ws"],
     });
+  });
+});
+
+describe("variáveis dinâmicas", () => {
+  it("gera um valor novo a cada ocorrência", () => {
+    const [a, b] = interpolate("{{$uuid}} {{ $uuid }}", {}).split(" ");
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(b).not.toBe(a);
+  });
+
+  it("timestamp em segundos, ISO e inteiro de 0 a 1000", () => {
+    const now = Math.floor(Date.now() / 1000);
+    expect(Number(interpolate("{{$timestamp}}", {}))).toBeGreaterThanOrEqual(now);
+    expect(interpolate("{{$isoTimestamp}}", {})).toMatch(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/);
+    for (let i = 0; i < 50; i++) {
+      const n = Number(interpolate("{{$randomInt}}", {}));
+      expect(Number.isInteger(n) && n >= 0 && n <= 1000).toBe(true);
+    }
+  });
+
+  it("variável de mesmo nome ganha; $ desconhecida continua indefinida", () => {
+    expect(interpolate("{{$uuid}}", { $uuid: "fixo" })).toBe("fixo");
+    expect(interpolate("{{$foo}}", {})).toBe("{{$foo}}");
+    expect(defined("$uuid", {})).toBe(true);
+    expect(defined("$foo", {})).toBe(false);
+    expect(defined("$foo", { $foo: "1" })).toBe(true);
+    expect(unresolved(prepare(request({ url: "http://a/{{$uuid}}/{{$foo}}" }), {}))).toEqual([
+      "$foo",
+    ]);
   });
 });
 

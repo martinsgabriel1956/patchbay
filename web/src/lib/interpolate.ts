@@ -22,9 +22,23 @@ export function varsFrom(...layers: unknown[]): Vars {
   return vars;
 }
 
+/** `{{$nome}}` geradas a cada ocorrência, na hora de resolver. Variável de mesmo nome ganha. */
+export const DYNAMIC: Record<string, () => string> = {
+  $uuid: () => crypto.randomUUID(),
+  $timestamp: () => String(Math.floor(Date.now() / 1000)),
+  $isoTimestamp: () => new Date().toISOString(),
+  $randomInt: () => String(Math.floor(Math.random() * 1001)),
+};
+
+/** Tem valor no escopo ou é dinâmica (para destacar como definida). */
+export const defined = (name: string, vars: Vars) =>
+  Object.hasOwn(vars, name) || Object.hasOwn(DYNAMIC, name);
+
 /** Uma passada só: valor que contém `{{` não é reinterpretado. Indefinida fica como está. */
 export const interpolate = (text: string, vars: Vars) =>
-  text.replace(VAR, (raw, name: string) => (Object.hasOwn(vars, name) ? vars[name] : raw));
+  text.replace(VAR, (raw, name: string) =>
+    Object.hasOwn(vars, name) ? vars[name] : Object.hasOwn(DYNAMIC, name) ? DYNAMIC[name]() : raw,
+  );
 
 /** Nomes das `{{var}}` que sobraram numa request já resolvida (sem valor no escopo). */
 export const unresolved = (req: unknown) => [
