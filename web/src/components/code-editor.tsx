@@ -4,7 +4,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { foldGutter, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { search, searchKeymap } from "@codemirror/search";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -69,6 +69,29 @@ export const theme = EditorView.theme({
     fontSize: "13px",
     padding: "4px 10px",
     outlineOffset: "-2px",
+  },
+  // Autocomplete, hover e lint (GraphQL): chapados, com fio; o item escolhido inverte.
+  ".cm-tooltip": {
+    backgroundColor: "var(--bg)",
+    color: "var(--ink-2)",
+    border: "1px solid var(--line)",
+    fontFamily: "'Red Hat Mono', ui-monospace, monospace",
+    fontSize: "12.5px",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    backgroundColor: "var(--ink)",
+    color: "var(--bg)",
+  },
+  ".cm-tooltip.cm-completionInfo, .cm-gql-info, .cm-diagnostic": {
+    padding: "6px 10px",
+    maxWidth: "56ch",
+    whiteSpace: "pre-wrap",
+  },
+  ".cm-completionDetail": { color: "var(--mute)", fontStyle: "normal" },
+  ".cm-diagnostic-error": { borderLeft: "2px solid var(--prod-text)" },
+  ".cm-lintRange-error": {
+    backgroundImage: "none",
+    textDecoration: "underline wavy var(--prod-text) 1px",
   },
   ".cm-button, .cm-panel label": {
     fontWeight: "700",
@@ -142,10 +165,13 @@ export function CodeEditor(props: {
   label: string;
   /** Com scope, {{var}} aparecem destacadas. */
   scope?: Scope;
+  /** Linguagem extra (GraphQL com schema); trocar reconfigura sem recriar o editor. */
+  extensions?: Extension;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView>(null);
   const marks = useRef(new Compartment());
+  const extra = useRef(new Compartment());
   const onChange = useRef(props.onChange);
   onChange.current = props.onChange;
   const readOnly = !props.onChange;
@@ -173,6 +199,7 @@ export function CodeEditor(props: {
           theme,
           props.language === "json" ? json() : [],
           marks.current.of(props.scope ? varMarks(props.scope) : []),
+          extra.current.of(props.extensions ?? []),
         ],
       }),
     });
@@ -185,6 +212,10 @@ export function CodeEditor(props: {
       effects: marks.current.reconfigure(props.scope ? varMarks(props.scope) : []),
     });
   }, [props.scope]);
+
+  useEffect(() => {
+    view.current?.dispatch({ effects: extra.current.reconfigure(props.extensions ?? []) });
+  }, [props.extensions]);
 
   useEffect(() => {
     const editor = view.current;

@@ -6,7 +6,8 @@ import { create } from "zustand";
 import { requestContext } from "@/features/environments/store";
 import { realtime } from "@/lib/api-client";
 import { setTrayStatus } from "@/lib/desktop";
-import { interpolate, prepareRealtime } from "@/lib/interpolate";
+import { effectiveAuth, interpolate, prepareRealtime } from "@/lib/interpolate";
+import { ensureAuth } from "@/lib/oauth";
 
 /** Uma linha do log. "in"/"out" são mensagens; "event" é open/close/error da conexão. */
 export type Entry = {
@@ -76,6 +77,8 @@ export const useRealtime = create<RealtimeStore>()((set, get) => {
       }));
       try {
         const { scope, parents } = await requestContext(path);
+        const inherited = effectiveAuth({ type: "inherit" }, parents);
+        await ensureAuth(inherited, (t) => interpolate(t, scope.vars));
         const start = prepareRealtime(req, scope.vars, parents);
         // Sem esquema, assume ws:// ou http:// (como o editor HTTP).
         if (!/^[a-z][\w+.-]*:\/\//i.test(start.url))

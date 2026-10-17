@@ -29,6 +29,19 @@ export const Auth = z.discriminatedUnion("type", [
     value: z.string(),
     in: z.enum(["header", "query"]),
   }),
+  // O fluxo (PKCE, token, refresh) roda na web, pelo /send. Token nunca vai para o disco.
+  // authUrl só vale no authorization_code; audience vazio não é enviado.
+  z.object({
+    type: z.literal("oauth2"),
+    grant: z.enum(["client_credentials", "authorization_code"]),
+    tokenUrl: z.string(),
+    authUrl: z.string(),
+    clientId: z.string(),
+    clientSecret: z.string(),
+    scope: z.string(),
+    audience: z.string(),
+    in: z.enum(["header", "query"]), // header: Authorization: Bearer; query: access_token=
+  }),
 ]);
 export type Auth = z.infer<typeof Auth>;
 
@@ -72,8 +85,12 @@ export const HttpRequest = z.object({
 export type HttpRequest = z.infer<typeof HttpRequest>;
 
 /** Corpo do POST /send: a request e a chave do cookie jar ("<coleção>/<environment>").
- *  Sem jar, nada de cookies automáticos. */
-export const SendRequest = HttpRequest.extend({ jar: z.string().optional() });
+ *  Sem jar, nada de cookies automáticos. history: false não grava no .history.jsonl (token
+ *  OAuth com client_secret no body, introspection do GraphQL). */
+export const SendRequest = HttpRequest.extend({
+  jar: z.string().optional(),
+  history: z.boolean().optional(),
+});
 export type SendRequest = z.infer<typeof SendRequest>;
 
 /** Item de `GET /cookies?jar=`. */

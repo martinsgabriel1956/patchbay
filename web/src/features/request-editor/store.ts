@@ -6,7 +6,8 @@ import { useRealtime } from "@/features/realtime/store";
 import { channelOf, files, json, nextChannel, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
 import { parseCurl, toCurl } from "@/lib/curl";
-import { prepare, unresolved } from "@/lib/interpolate";
+import { effectiveAuth, interpolate, prepare, unresolved } from "@/lib/interpolate";
+import { ensureAuth } from "@/lib/oauth";
 import { focusUrl } from "@/lib/utils";
 import { paramsFromUrl, urlWithParams } from "./query";
 
@@ -255,6 +256,8 @@ export const useRequest = create<RequestStore>()(
           let jar: string;
           try {
             const { collection, env, scope, parents } = await requestContext(where(tab));
+            // OAuth: pega ou renova o token antes de resolver (falha aparece como envio falho).
+            await ensureAuth(effectiveAuth(tab.auth, parents), (t) => interpolate(t, scope.vars));
             req = prepare(toRequest(tab), scope.vars, parents);
             jar = jarKey(collection, env);
           } catch (err) {
@@ -312,6 +315,7 @@ export const useRequest = create<RequestStore>()(
         exportCurl: async () => {
           const tab = current();
           const { scope, parents } = await requestContext(where(tab));
+          await ensureAuth(effectiveAuth(tab.auth, parents), (t) => interpolate(t, scope.vars));
           return toCurl(prepare(toRequest(tab), scope.vars, parents));
         },
 
