@@ -19,3 +19,19 @@ export function setTrayStatus(activeConnections: number) {
 export function setWindowTheme(theme: "dark" | "light" | null) {
   if (inTauri) getCurrentWindow().setTheme(theme);
 }
+
+/** Abre no browser do sistema (login OAuth). Fora do Tauri, numa aba nova. */
+export async function openBrowser(url: string) {
+  if (inTauri) await invoke("open_browser", { url });
+  else window.open(url, "_blank", "noopener");
+}
+
+/** Atalho global de mostrar/esconder a janela; null desliga. Rejeita com a mensagem do SO
+ *  (atalho inválido ou já tomado por outro app). */
+export const setGlobalShortcut = (shortcut: string | null) =>
+  inTauri ? invoke<void>("set_global_shortcut", { shortcut }) : Promise.resolve();
+
+/** Notificação nativa; o Rust só mostra com a janela escondida ou minimizada. */
+export function notify(title: string, body: string) {
+  if (inTauri) invoke("notify", { title, body }).catch(() => {});
+}

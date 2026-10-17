@@ -11,6 +11,7 @@ import { effectiveAuth } from "@/lib/interpolate";
 import { isMac, modalOpen } from "@/lib/utils";
 import { AuthEditor, authName } from "./auth-editor";
 import { FilePicker } from "./file-picker";
+import { GraphqlQuery } from "./graphql";
 import { KvTable } from "./kv-table";
 import { activeTab, type BodyType, type Field, useRequest, where } from "./store";
 
@@ -219,14 +220,7 @@ export function RequestEditor() {
           )}
           {r.bodyType === "graphql" && (
             <>
-              <div className="min-h-40 flex-1 border border-line">
-                <CodeEditor
-                  label="Query GraphQL"
-                  value={r.bodyContent}
-                  onChange={(bodyContent) => set({ bodyContent })}
-                  scope={scope}
-                />
-              </div>
+              <GraphqlQuery scope={scope} />
               <span className="label text-[12px] text-mute">Variables (JSON)</span>
               <div className="h-32 shrink-0 border border-line">
                 <CodeEditor

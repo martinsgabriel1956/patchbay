@@ -22,6 +22,8 @@ import { clearCookies, collectionEnvs, useEnvironments } from "@/features/enviro
 import { RealtimeEditor } from "@/features/realtime/realtime-editor";
 import { RealtimePanel } from "@/features/realtime/realtime-panel";
 import { useRealtime } from "@/features/realtime/store";
+import { GraphqlCommands } from "@/features/request-editor/graphql";
+import { OAuthCommands } from "@/features/request-editor/oauth-panel";
 import { RequestEditor } from "@/features/request-editor/request-editor";
 import { closeTab, RequestTabs } from "@/features/request-editor/request-tabs";
 import { activeTab, useRequest, where } from "@/features/request-editor/store";
@@ -421,6 +423,8 @@ export function App() {
                 Comparar resposta com…
               </CommandItem>
             )}
+            <OAuthCommands run={run} />
+            <GraphqlCommands run={run} />
           </CommandGroup>
 
           {list.length > 0 && (

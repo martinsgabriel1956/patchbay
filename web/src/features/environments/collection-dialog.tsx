@@ -23,6 +23,7 @@ import {
   type Secrets,
   secretsPath,
   useEnvironments,
+  useRequestContext,
 } from "./store";
 
 type EnvDraft = { name: string; from?: string; vars: KV[]; secrets: KV[] };
@@ -92,6 +93,8 @@ function Editor({
   const contents = useWorkspace((s) => s.contents);
   const colPath = `${folder}/collection.json`;
   const col = (contents[colPath] ?? {}) as Collection;
+  // Variáveis do environment ativo: destacar `{{var}}` e obter token OAuth daqui mesmo.
+  const { scope } = useRequestContext(colPath);
   const original = top ? environmentsOf(contents, folder) : [];
 
   const [envs, setEnvs] = useState<EnvDraft[]>(() =>
@@ -289,7 +292,7 @@ function Editor({
             </TabPanel>
           )}
           <TabPanel value="auth" className="px-0">
-            <AuthEditor auth={auth} onChange={setAuth} inheritable={!top} />
+            <AuthEditor auth={auth} onChange={setAuth} inheritable={!top} scope={scope} />
           </TabPanel>
           <TabPanel value="headers" className="grid content-start gap-3 px-0">
             <p className={note}>

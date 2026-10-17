@@ -9,6 +9,7 @@ import type {
   RealtimeRequest,
   RealtimeStart,
 } from "@api/schemas";
+import { cachedToken, resolveOAuth } from "./oauth";
 
 export type Vars = Record<string, string>;
 /** Uma pasta/coleção acima da request (collection.json), da mais próxima para a mais distante. */
@@ -165,14 +166,21 @@ export function prepare(req: HttpRequest, vars: Vars, parents: Parent[] = []): H
   if (auth.type === "bearer") header("Authorization", `Bearer ${sub(auth.token)}`);
   if (auth.type === "basic")
     header("Authorization", `Basic ${base64(`${sub(auth.username)}:${sub(auth.password)}`)}`);
+  const query = (key: string, value: string) => {
+    const [k, v] = [encodeURIComponent(key), encodeURIComponent(value)];
+    url = addQuery(url, `${k}=${v}`);
+    params.push({ key: k, value: v, enabled: true });
+  };
   if (auth.type === "apikey" && sub(auth.key)) {
     const [key, value] = [sub(auth.key), sub(auth.value)];
     if (auth.in === "header") header(key, value);
-    else {
-      const [k, v] = [encodeURIComponent(key), encodeURIComponent(value)];
-      url = addQuery(url, `${k}=${v}`);
-      params.push({ key: k, value: v, enabled: true });
-    }
+    else query(key, value);
+  }
+  // OAuth: o token já obtido (ensureAuth, antes de chamar o prepare). Sem token, vai sem.
+  const token = auth.type === "oauth2" && cachedToken(resolveOAuth(auth, sub))?.accessToken;
+  if (token && auth.type === "oauth2") {
+    if (auth.in === "query") query("access_token", token);
+    else header("Authorization", `Bearer ${token}`);
   }
 
   // Auth já virou header/query: a request enviada (e o histórico) leva "none".

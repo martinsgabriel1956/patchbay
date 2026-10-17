@@ -341,6 +341,11 @@ describe("POST /send", () => {
       sizeBytes: PNG.length,
     });
     expect(lines.at(-2)).toMatch(/"failed":\{"reason":"error"/); // o 400 do arquivo inexistente
+
+    // history: false (token OAuth, introspection) não vira linha.
+    await sendOk({ url: `${echoUrl}/echo?secret=1`, history: false });
+    const after = readFileSync(path.join(await root(), ".history.jsonl"), "utf8").trim();
+    expect(after.split("\n")).toHaveLength(lines.length);
   });
 
   it("headers repetidos chegam como pares, na ordem", async () => {

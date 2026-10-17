@@ -6,6 +6,7 @@ import { isSea } from "node:sea";
 import Fastify from "fastify";
 import { root } from "./lib/workspace.js";
 import { filesRoute } from "./routes/files.js";
+import { oauthRoute } from "./routes/oauth.js";
 import { realtimeRoute } from "./routes/realtime.js";
 import { sendRoute } from "./routes/send.js";
 
@@ -64,6 +65,7 @@ app.get("/health", async () => ({ ok: true }));
 sendRoute(app);
 filesRoute(app);
 realtimeRoute(app);
+oauthRoute(app);
 
 process.stdin.on("end", () => process.exit(0));
 process.stdin.on("close", () => process.exit(0));

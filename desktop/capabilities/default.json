@@ -1,12 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Só os três comandos da ponte + tema da barra de título. Sem fs, sem shell.",
+  "description": "Só os comandos estreitos da ponte + tema da barra de título. Sem fs, sem shell, e nenhuma permissão dos plugins de atalho, notificação e opener: o Rust os usa por trás dos próprios comandos.",
   "windows": ["main"],
   "permissions": [
     "allow-api-info",
     "allow-set-close-to-tray",
     "allow-set-tray-status",
+    "allow-open-browser",
+    "allow-set-global-shortcut",
+    "allow-notify",
     "core:window:allow-set-theme"
   ]
 }

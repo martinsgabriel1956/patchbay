@@ -22,7 +22,8 @@ export function sendRoute(app: FastifyInstance) {
   app.post("/send", { bodyLimit: 20 * 1024 * 1024 }, async (req, reply) => {
     const parsed = SendRequest.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: z.prettifyError(parsed.error) });
-    const { jar, ...request } = parsed.data;
+    const { jar, history = true, ...request } = parsed.data;
+    const log = history ? record : async () => {};
 
     // Cancelar = a web aborta o próprio fetch; a conexão fecha e o upstream é abortado.
     const cancel = new AbortController();
@@ -33,14 +34,14 @@ export function sendRoute(app: FastifyInstance) {
     try {
       const res = await send(request, cancel.signal, jar === undefined ? undefined : jarOf(jar));
       const { status, statusText, timeMs, sizeBytes } = res;
-      await record(request, at, { response: { status, statusText, timeMs, sizeBytes } });
+      await log(request, at, { response: { status, statusText, timeMs, sizeBytes } });
       return res;
     } catch (err) {
       const { status = 502, message, code } = err as Error & { status?: number; code?: string };
       // AggregateError (ex.: ECONNREFUSED em ::1 e 127.0.0.1) vem sem message.
       const error = message || code || String(err);
       const reason = cancel.signal.aborted ? "cancelled" : status === 504 ? "timeout" : "error";
-      await record(request, at, { failed: { reason, message: error } });
+      await log(request, at, { failed: { reason, message: error } });
       return reply.code(status).send({ error });
     }
   });
