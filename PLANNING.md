@@ -346,6 +346,7 @@ Cada fase termina com algo **usável**. Não começar a próxima antes.
 | Segredos no keychain do SO | O `.env.local.json` gitignored não bastar |
 | Proxy / mTLS / certificados de cliente | Bater numa API corporativa que exija |
 | Runner de coleção | Existirem scripts/testes |
+| CLI `patchbay run <pasta>` (headless, para CI) | Os asserts + runner existirem e eu quiser a coleção como smoke test no pipeline. Exige tirar `interpolate.ts`, auth e avaliação de asserts da `web/` para código importável pelo Node (hoje é lógica só da web, seção 1) |
 | Auto-update | Distribuir para mais alguém |
 | Sync / times / cloud | Provavelmente nunca: git resolve |
 
