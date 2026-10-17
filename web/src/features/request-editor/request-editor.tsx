@@ -3,6 +3,7 @@ import { CodeEditor } from "@/components/code-editor";
 import { Segmented } from "@/components/segmented";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import { VarInput } from "@/components/var-input";
+import { AssertsEditor } from "@/features/asserts/asserts-ui";
 import { useRequestContext } from "@/features/environments/store";
 import { useWorkspace } from "@/features/sidebar/store";
 import { isCurl } from "@/lib/curl";
@@ -132,6 +133,7 @@ export function RequestEditor() {
           <Tab value="body">Body {r.bodyType === "none" ? "" : bodyName}</Tab>
           <Tab value="auth">Auth {auth.type === "none" ? "" : authName(auth.type)}</Tab>
           <Tab value="options">Opções</Tab>
+          <Tab value="asserts">Asserts {r.asserts?.filter((a) => a.enabled).length || ""}</Tab>
         </TabList>
         <TabPanel value="params">
           <KvTable label="Params" rows={r.params} onChange={setParams} scope={scope} />
@@ -284,6 +286,13 @@ export function RequestEditor() {
             />
             <span className="font-mono text-[13px] text-mute">ms</span>
           </label>
+        </TabPanel>
+        <TabPanel value="asserts">
+          <AssertsEditor
+            rows={r.asserts ?? []}
+            onChange={(asserts) => set({ asserts })}
+            scope={scope}
+          />
         </TabPanel>
       </TabsRoot>
     </div>

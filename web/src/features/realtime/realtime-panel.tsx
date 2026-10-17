@@ -173,13 +173,26 @@ export function timecode(ms: number) {
     .join(":");
 }
 
-/** Log de frames, mais novo no topo. Filtro por texto e Limpar. */
-export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: () => void }) {
+/** Log de frames, mais novo no topo. Filtro por texto e Limpar. Com onSelect (webhook), o
+ *  cabeçalho de cada linha vira botão e a selecionada inverte. */
+export function MessageLog({
+  entries,
+  onClear,
+  selected,
+  onSelect,
+}: {
+  entries: Entry[];
+  onClear: () => void;
+  selected?: number;
+  onSelect?: (id: number) => void;
+}) {
   const [filter, setFilter] = useState("");
   const [raw, setRaw] = useState(false);
   const shown = useMemo(() => {
     const q = filter.toLowerCase();
-    const list = q ? entries.filter((e) => e.data.toLowerCase().includes(q)) : entries;
+    const list = q
+      ? entries.filter((e) => `${e.event ?? ""} ${e.data}`.toLowerCase().includes(q))
+      : entries;
     return list.slice().reverse();
   }, [entries, filter]);
   // Cada linha conta a partir do "open" mais recente antes dela (reconectar zera o relógio).
@@ -240,7 +253,14 @@ export function MessageLog({ entries, onClear }: { entries: Entry[]; onClear: ()
       ) : (
         <ol aria-label="Mensagens" className="min-h-0 flex-1 overflow-y-auto py-1.5">
           {shown.map((entry) => (
-            <Row key={entry.id} entry={entry} code={codes.get(entry.id) ?? ""} raw={raw} />
+            <Row
+              key={entry.id}
+              entry={entry}
+              code={codes.get(entry.id) ?? ""}
+              raw={raw}
+              selected={entry.id === selected}
+              onSelect={onSelect}
+            />
           ))}
         </ol>
       )}
@@ -266,7 +286,19 @@ function pretty(data: string) {
 }
 
 // memo: linhas não mudam depois de criadas; só as novas renderizam (e só elas parseiam JSON).
-const Row = memo(function Row({ entry, code, raw }: { entry: Entry; code: string; raw: boolean }) {
+const Row = memo(function Row({
+  entry,
+  code,
+  raw,
+  selected,
+  onSelect,
+}: {
+  entry: Entry;
+  code: string;
+  raw: boolean;
+  selected?: boolean;
+  onSelect?: (id: number) => void;
+}) {
   const event = entry.dir === "event";
   const tone = entry.kind === "error" ? "text-prod-text" : event ? "text-mute" : "text-ink-2";
   return (
@@ -285,24 +317,35 @@ const Row = memo(function Row({ entry, code, raw }: { entry: Entry; code: string
       >
         {event ? (entry.kind === "error" ? "err" : "·") : entry.dir}
       </span>
-      {entry.binary ? (
-        <span className="break-all text-ink-2">
-          <span className="text-mute">binário · {atob(entry.data).length} B · base64 </span>
-          {entry.data}
-        </span>
-      ) : (
-        <div className="min-w-0">
-          {(entry.event || entry.sseId !== undefined) && (
+      <div className="min-w-0">
+        {onSelect && entry.event ? (
+          <button
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onSelect(entry.id)}
+            className="block max-w-full truncate px-1 text-left text-ink outline-offset-[-2px] hover:shadow-[inset_0_-2px_var(--ink)] aria-pressed:bg-ink aria-pressed:text-bg"
+          >
+            {entry.event}
+          </button>
+        ) : (
+          (entry.event || entry.sseId !== undefined) && (
             <span className="block text-mute">
               {entry.event && <span className="text-ink">{entry.event}</span>}
               {entry.sseId !== undefined && ` · id ${entry.sseId}`}
             </span>
-          )}
+          )
+        )}
+        {entry.binary ? (
+          <span className="block break-all text-ink-2">
+            <span className="text-mute">binário · {atob(entry.data).length} B · base64 </span>
+            {entry.data}
+          </span>
+        ) : (
           <pre className={`break-words whitespace-pre-wrap ${tone}`}>
             {event || raw ? entry.data : pretty(entry.data)}
           </pre>
-        </div>
-      )}
+        )}
+      </div>
     </li>
   );
 });

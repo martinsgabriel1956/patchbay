@@ -48,6 +48,20 @@ export const Network = z.object({
 });
 export type Network = z.infer<typeof Network>;
 
+/**
+ * Assert declarativo sobre a resposta (sem sandbox JS). `path`: nome do header (target header) ou
+ * caminho JSON do body (target body; vazio = o body inteiro como texto); ignorado em status/time.
+ * `expected` aceita `{{var}}`; ignorado em exists. A avaliação é da web (asserts.ts).
+ */
+export const Assert = z.object({
+  enabled: z.boolean(),
+  target: z.enum(["status", "header", "time", "body"]),
+  path: z.string(),
+  op: z.enum(["equals", "notEquals", "contains", "exists", "lessThan", "greaterThan", "matches"]),
+  expected: z.string(),
+});
+export type Assert = z.infer<typeof Assert>;
+
 export const HttpRequest = z.object({
   id: z.string(),
   name: z.string(),
@@ -68,6 +82,8 @@ export const HttpRequest = z.object({
       ...Network.shape,
     })
     .optional(),
+  /** Opcional: arquivos sem asserts continuam válidos (e não ganham a chave ao salvar). */
+  asserts: z.array(Assert).optional(),
 });
 export type HttpRequest = z.infer<typeof HttpRequest>;
 
@@ -113,6 +129,36 @@ export type RealtimeEvent = { at: string } & (
 /** Pelo /realtime aberto com `{ kind: "watch" }`: paths (relativos) que mudaram no disco fora da
  *  api. Um diretório na lista vale por tudo dentro dele. */
 export type WorkspaceEvent = { type: "changed"; paths: string[] };
+
+/** 1ª mensagem no /realtime para receber webhooks: um listener à parte em 127.0.0.1 (porta 0 =
+ *  o SO escolhe) que só grava as requests e responde `status` (padrão 200) com `body`. */
+export const WebhookStart = z.object({
+  kind: z.literal("webhook"),
+  port: z.number().int().min(0).max(65535).optional(),
+  status: z.number().int().min(200).max(599).optional(),
+  body: z.string().optional(),
+});
+export type WebhookStart = z.infer<typeof WebhookStart>;
+
+/** Request recebida pelo listener. Headers crus em pares (repetem); body em base64 se binário,
+ *  cortado em 5 MB (sizeBytes é o tamanho recebido inteiro). */
+export type CapturedRequest = {
+  method: string;
+  url: string; // path + query, como veio
+  headers: [string, string][];
+  body: string;
+  isBinary: boolean;
+  truncated: boolean;
+  sizeBytes: number;
+};
+
+/** O que a api manda pelo /realtime aberto com `{ kind: "webhook" }`. */
+export type WebhookEvent = { at: string } & (
+  | { type: "listening"; data: { port: number } }
+  | { type: "request"; data: CapturedRequest }
+  | { type: "error"; data: string }
+  | { type: "close"; data: { code: number; reason: string } }
+);
 
 export const Environment = z.object({ name: z.string(), vars: z.array(KV) });
 export type Environment = z.infer<typeof Environment>;

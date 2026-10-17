@@ -10,9 +10,16 @@ import { CodeEditor, theme as editorTheme, highlight } from "@/components/code-e
 import { ShortcutList } from "@/components/shortcuts";
 import { Tab, TabList, TabPanel, TabsRoot } from "@/components/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { evaluate } from "@/features/asserts/asserts";
+import { AssertResults } from "@/features/asserts/asserts-ui";
 import { useCurrentEnvironments } from "@/features/environments/env-bar";
-import { clearCookies, cookiesPath, useEnvironments } from "@/features/environments/store";
-import { activeTab, type Past, useRequest } from "@/features/request-editor/store";
+import {
+  clearCookies,
+  cookiesPath,
+  useEnvironments,
+  useRequestContext,
+} from "@/features/environments/store";
+import { activeTab, type Past, useRequest, where } from "@/features/request-editor/store";
 import { openHistory, when } from "@/features/sidebar/sidebar";
 import { useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
@@ -266,6 +273,14 @@ function Response({ response }: { response: HttpResponse }) {
   const [phases, setPhases] = useState(false);
   const comparable = useRequest((s) => (activeTab(s).past?.length ?? 0) > 1);
   const type = response.headers.find(([key]) => key.toLowerCase() === "content-type")?.[1] ?? "";
+  // Asserts da aba contra a resposta da tela; editar um assert reavalia na hora.
+  const asserts = useRequest((s) => activeTab(s).asserts);
+  const { scope } = useRequestContext(useRequest((s) => where(activeTab(s))));
+  const results = useMemo(
+    () => evaluate(asserts ?? [], response, scope.vars),
+    [asserts, response, scope.vars],
+  );
+  const failed = results.filter((r) => !r.pass).length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -332,6 +347,14 @@ function Response({ response }: { response: HttpResponse }) {
           <Tab value="body">Body</Tab>
           <Tab value="headers">Headers {response.headers.length}</Tab>
           <Tab value="cookies">Cookies</Tab>
+          {results.length > 0 && (
+            <Tab value="asserts">
+              Asserts{" "}
+              <span className={`font-mono tabular-nums ${failed ? "text-prod-text" : ""}`}>
+                {results.length - failed}/{results.length}
+              </span>
+            </Tab>
+          )}
         </TabList>
         <TabPanel value="body" className="p-0">
           <Body response={response} type={type} pretty={pretty} />
@@ -349,6 +372,9 @@ function Response({ response }: { response: HttpResponse }) {
         </TabPanel>
         <TabPanel value="cookies">
           <JarCookies />
+        </TabPanel>
+        <TabPanel value="asserts">
+          <AssertResults results={results} />
         </TabPanel>
       </TabsRoot>
       <CompareDialog response={response} />

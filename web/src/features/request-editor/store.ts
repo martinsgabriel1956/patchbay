@@ -1,4 +1,12 @@
-import type { Auth, Body, HttpRequest, HttpResponse, KV, RealtimeRequest } from "@api/schemas";
+import type {
+  Assert,
+  Auth,
+  Body,
+  HttpRequest,
+  HttpResponse,
+  KV,
+  RealtimeRequest,
+} from "@api/schemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { jarKey, requestContext, useEnvironments } from "@/features/environments/store";
@@ -26,8 +34,9 @@ export type Draft = {
   name: string;
   /** Número fixo do canal; só existe depois de salvo no workspace. */
   channel?: number;
-  /** Abas salvas antes da Fase 4 não têm kind: o merge do persist completa com "http". */
-  kind: "http" | "ws" | "sse";
+  /** Abas salvas antes da Fase 4 não têm kind: o merge do persist completa com "http".
+   *  "webhook": inspetor de webhooks, só em aba (não vai para o disco). */
+  kind: "http" | "ws" | "sse" | "webhook";
   method: string;
   url: string;
   params: KV[];
@@ -43,6 +52,8 @@ export type Draft = {
   options: NonNullable<HttpRequest["options"]>;
   /** Só ws. Editado como texto separado por vírgula; limpo ao salvar e ao conectar. */
   protocols: string[];
+  /** Só http. Abas salvas antes dos asserts não têm. */
+  asserts?: Assert[];
 };
 
 /** Resposta recebida nesta sessão, para comparar (Comparar com…). Só em memória. */
@@ -104,7 +115,7 @@ type RequestStore = {
 
 const blank = (kind: Draft["kind"] = "http"): Draft => ({
   id: crypto.randomUUID(),
-  name: { http: "Nova request", ws: "Novo WebSocket", sse: "Novo SSE" }[kind],
+  name: { http: "Nova request", ws: "Novo WebSocket", sse: "Novo SSE", webhook: "Webhook" }[kind],
   kind,
   method: "GET",
   url: "",
@@ -118,6 +129,7 @@ const blank = (kind: Draft["kind"] = "http"): Draft => ({
   auth: { type: "inherit" },
   options: { timeoutMs: 30_000, followRedirects: true, insecureTls: false },
   protocols: [],
+  asserts: [],
 });
 
 type AnyRequest = Partial<Omit<HttpRequest, "kind">> & Partial<Omit<RealtimeRequest, "kind">>;
@@ -143,6 +155,7 @@ export function fromRequest(r: AnyRequest & { kind?: string }): Draft {
     auth: r.auth ?? d.auth,
     options: { ...d.options, ...r.options },
     protocols: r.protocols ?? [],
+    asserts: r.asserts ?? [],
   };
 }
 
@@ -180,6 +193,18 @@ export function toRequest(d: Draft): HttpRequest {
     body: toBody(d),
     auth: d.auth,
     options: { timeoutMs, followRedirects, insecureTls },
+    // Sem asserts, a chave nem vai para o arquivo (arquivos antigos não mudam ao salvar).
+    ...(d.asserts?.length
+      ? {
+          asserts: d.asserts.map(({ enabled, target, path, op, expected }) => ({
+            enabled,
+            target,
+            path,
+            op,
+            expected,
+          })),
+        }
+      : {}),
   };
 }
 

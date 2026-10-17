@@ -21,6 +21,7 @@ import { EnvBar, useCurrentEnvironments } from "@/features/environments/env-bar"
 import { clearCookies, collectionEnvs, useEnvironments } from "@/features/environments/store";
 import { RealtimeEditor } from "@/features/realtime/realtime-editor";
 import { RealtimePanel } from "@/features/realtime/realtime-panel";
+import { useRealtime } from "@/features/realtime/store";
 import { RequestEditor } from "@/features/request-editor/request-editor";
 import { closeTab, RequestTabs } from "@/features/request-editor/request-tabs";
 import { activeTab, useRequest, where } from "@/features/request-editor/store";
@@ -30,6 +31,8 @@ import {
   ResponseViewer,
   searchResponse,
 } from "@/features/response-viewer/response-viewer";
+import { RunnerDialog } from "@/features/runner/runner-dialog";
+import { useRunner } from "@/features/runner/store";
 import { SettingsDialog, THEMES } from "@/features/settings/settings-dialog";
 import { useApplySettings, useSettings } from "@/features/settings/store";
 import {
@@ -42,7 +45,14 @@ import {
   when,
 } from "@/features/sidebar/sidebar";
 import { useWorkspace } from "@/features/sidebar/store";
+import {
+  copyWebhookUrl,
+  startWebhook,
+  WebhookEditor,
+  WebhookPanel,
+} from "@/features/webhook/webhook";
 import { api } from "@/lib/api-client";
+import { type Dict, strings, useStrings } from "@/lib/i18n";
 import { focusUrl, mod, modalOpen } from "@/lib/utils";
 
 /** A request ativa, resolvida, como curl na área de transferência. Falha aparece na sidebar.
@@ -59,7 +69,40 @@ const copyCurl = () => {
     );
 };
 
-const save = () => useWorkspace.setState({ saving: true });
+const PALETTE: Dict<{
+  newWebhook: string;
+  listen: string;
+  stop: string;
+  copyUrl: string;
+  run: (folder: string) => string;
+  lastRun: string;
+  notSaved: string;
+}> = {
+  en: {
+    newWebhook: "New webhook inspector",
+    listen: "Webhook: listen",
+    stop: "Webhook: stop",
+    copyUrl: "Webhook: copy URL",
+    run: (folder) => `Run requests in ${folder}`,
+    lastRun: "Last run results",
+    notSaved: "The webhook inspector is not saved to the workspace.",
+  },
+  "pt-BR": {
+    newWebhook: "Novo inspetor de webhook",
+    listen: "Webhook: escutar",
+    stop: "Webhook: parar",
+    copyUrl: "Webhook: copiar URL",
+    run: (folder) => `Rodar requests de ${folder}`,
+    lastRun: "Resultado da última execução",
+    notSaved: "O inspetor de webhook não vai para o workspace.",
+  },
+};
+
+// O inspetor de webhook só existe em aba: nada para salvar.
+const save = () =>
+  activeTab(useRequest.getState()).kind === "webhook"
+    ? useWorkspace.setState({ notice: strings(PALETTE).notSaved })
+    : useWorkspace.setState({ saving: true });
 
 /** Ctrl Tab / Ctrl Shift Tab: próxima / anterior aba, dando a volta. */
 const cycleTab = (step: number) => {
@@ -104,7 +147,12 @@ export function App() {
   const [rail, setRail] = useState(() => window.innerWidth >= 1200);
   const active = useRequest((s) => activeTab(s).key);
   const activePath = useRequest((s) => activeTab(s).path);
-  const realtime = useRequest((s) => activeTab(s).kind !== "http");
+  const activeFolder = activePath?.split("/").slice(0, -1).join("/");
+  const kind = useRequest((s) => activeTab(s).kind);
+  const realtime = kind !== "http";
+  const listening = useRealtime((s) => s.conns[active]?.status === "open");
+  const ran = useRunner((s) => s.rows.length > 0);
+  const t = useStrings(PALETTE);
   // Há uma resposta na tela e outra anterior desta aba para comparar.
   const comparable = useRequest((s) => {
     const tab = activeTab(s);
@@ -288,11 +336,23 @@ export function App() {
               <RequestTabs />
               {/* key: cada aba tem o próprio editor (cursor, undo, aba interna) */}
               <div className="min-h-0 flex-1">
-                {realtime ? <RealtimeEditor key={active} /> : <RequestEditor key={active} />}
+                {kind === "webhook" ? (
+                  <WebhookEditor key={active} />
+                ) : realtime ? (
+                  <RealtimeEditor key={active} />
+                ) : (
+                  <RequestEditor key={active} />
+                )}
               </div>
             </section>
             <section id="response" aria-label="Resposta" className="min-h-0">
-              {realtime ? <RealtimePanel /> : <ResponseViewer key={active} />}
+              {kind === "webhook" ? (
+                <WebhookPanel key={active} />
+              ) : realtime ? (
+                <RealtimePanel />
+              ) : (
+                <ResponseViewer key={active} />
+              )}
             </section>
           </div>
         </div>
@@ -320,6 +380,22 @@ export function App() {
             <CommandItem onSelect={run(() => useRequest.getState().newTab("sse"))}>
               Nova request SSE
             </CommandItem>
+            <CommandItem onSelect={run(() => useRequest.getState().newTab("webhook"))}>
+              {t.newWebhook}
+            </CommandItem>
+            {kind === "webhook" &&
+              (listening ? (
+                <>
+                  <CommandItem onSelect={run(copyWebhookUrl)}>{t.copyUrl}</CommandItem>
+                  <CommandItem onSelect={run(() => useRealtime.getState().disconnect(active))}>
+                    {t.stop}
+                  </CommandItem>
+                </>
+              ) : (
+                <CommandItem onSelect={run(() => startWebhook(active))}>
+                  {t.listen} <CommandShortcut>{mod("↵")}</CommandShortcut>
+                </CommandItem>
+              ))}
             <CommandItem onSelect={run(() => closeTab(active))}>
               Fechar aba <CommandShortcut>{mod("W")}</CommandShortcut>
             </CommandItem>
@@ -397,6 +473,19 @@ export function App() {
               <CommandItem onSelect={run(() => useEnvironments.getState().edit(collection))}>
                 Editar environments de {collection}
               </CommandItem>
+              <CommandItem onSelect={run(() => useRunner.getState().run(collection))}>
+                {t.run(collection)}
+              </CommandItem>
+              {activeFolder && activeFolder !== collection && (
+                <CommandItem onSelect={run(() => useRunner.getState().run(activeFolder))}>
+                  {t.run(activeFolder)}
+                </CommandItem>
+              )}
+              {ran && (
+                <CommandItem onSelect={run(() => useRunner.setState({ open: true }))}>
+                  {t.lastRun}
+                </CommandItem>
+              )}
             </CommandGroup>
           )}
 
@@ -516,6 +605,7 @@ export function App() {
         </DialogContent>
       </Dialog>
       <CollectionDialog />
+      <RunnerDialog />
       <ConfirmDialog />
     </div>
   );
