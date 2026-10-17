@@ -9,7 +9,8 @@ import { jarKey, requestContext, useEnvironments } from "@/features/environments
 import { fromRequest, toRequest, useRequest } from "@/features/request-editor/store";
 import { channelOf, groups, useWorkspace } from "@/features/sidebar/store";
 import { api } from "@/lib/api-client";
-import { prepare, unresolved } from "@/lib/interpolate";
+import { effectiveAuth, interpolate, prepare, unresolved } from "@/lib/interpolate";
+import { ensureAuth } from "@/lib/oauth";
 
 export type RunRow = {
   path: string;
@@ -89,6 +90,10 @@ export const useRunner = create<Runner>()((set, get) => {
         patch(i, { state: "running" });
         try {
           const { collection, env, scope, parents } = await requestContext(path);
+          // OAuth: obtém/renova o token antes do prepare, como o Enviar do editor.
+          await ensureAuth(effectiveAuth(drafts[i].auth, parents), (t) =>
+            interpolate(t, scope.vars),
+          );
           const req = prepare(toRequest(drafts[i]), scope.vars, parents);
           const missing = unresolved(req);
           if (missing.length) {
