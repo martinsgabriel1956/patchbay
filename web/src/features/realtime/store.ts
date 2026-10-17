@@ -12,7 +12,6 @@ import { create } from "zustand";
 import { requestContext } from "@/features/environments/store";
 import { realtime } from "@/lib/api-client";
 import { setTrayStatus } from "@/lib/desktop";
-import { type Dict, strings } from "@/lib/i18n";
 import { effectiveAuth, interpolate, prepareRealtime } from "@/lib/interpolate";
 import { ensureAuth } from "@/lib/oauth";
 
@@ -58,21 +57,14 @@ type RealtimeStore = {
   drop: (key: string) => void;
 };
 
-const WEBHOOK_STRINGS: Dict<{
+const WEBHOOK_STRINGS: {
   starting: string;
   listening: (url: string) => string;
   stopped: string;
-}> = {
-  en: {
-    starting: "Starting listener",
-    listening: (url) => `Listening on ${url}`,
-    stopped: "Stopped",
-  },
-  "pt-BR": {
-    starting: "Abrindo listener",
-    listening: (url) => `Escutando em ${url}`,
-    stopped: "Parado",
-  },
+} = {
+  starting: "Abrindo listener",
+  listening: (url) => `Escutando em ${url}`,
+  stopped: "Parado",
 };
 
 // ponytail: log limitado às últimas 1000 linhas por conexão; virtualizar a lista se precisar de mais.
@@ -164,7 +156,7 @@ export const useRealtime = create<RealtimeStore>()((set, get) => {
 
     listen: async (key, config) => {
       get().disconnect(key);
-      const t = strings(WEBHOOK_STRINGS);
+      const t = WEBHOOK_STRINGS;
       set((s) => ({
         conns: { ...s.conns, [key]: { status: "connecting", log: s.conns[key]?.log ?? [] } },
       }));

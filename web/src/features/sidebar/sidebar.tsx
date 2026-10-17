@@ -17,7 +17,6 @@ import {
 import { STAMPS } from "@/features/response-viewer/diagnose";
 import { useRunner } from "@/features/runner/store";
 import { realtime } from "@/lib/api-client";
-import { useStrings } from "@/lib/i18n";
 import { focusUrl, mod, modalOpen } from "@/lib/utils";
 import { ImportDialog } from "./import-dialog";
 import { PathDialog, type PathDialogProps } from "./path-dialog";
@@ -142,7 +141,7 @@ export function Sidebar() {
   const conns = useRealtime((s) => s.conns);
   const live = new Set(tabs.filter((t) => conns[t.key]?.status === "open").map((t) => t.path));
   const [dialog, setDialog] = useState<PathDialogProps | null>(null);
-  const runLabel = useStrings({ en: "Run requests", "pt-BR": "Rodar requests" });
+  const runLabel = "Rodar requests";
 
   const all = groups(tree, contents);
   const folders = ["", ...all.filter((g) => g.path).map((g) => g.path)];

@@ -3,7 +3,6 @@
 import type { Assert } from "@api/schemas";
 import { VarInput } from "@/components/var-input";
 import type { Scope } from "@/features/environments/store";
-import { type Dict, useStrings } from "@/lib/i18n";
 import type { AssertError, AssertResult } from "./asserts";
 
 type Strings = {
@@ -25,72 +24,37 @@ type Strings = {
   errors: Record<AssertError, string>;
 };
 
-export const ASSERT_STRINGS: Dict<Strings> = {
-  en: {
-    label: "Asserts",
-    target: "Target",
-    path: "Header / JSON path",
-    op: "Operator",
-    expected: "Expected",
-    targets: { status: "Status", header: "Header", time: "Time (ms)", body: "Body" },
-    ops: {
-      equals: "equals",
-      notEquals: "not equals",
-      contains: "contains",
-      exists: "exists",
-      lessThan: "less than",
-      greaterThan: "greater than",
-      matches: "matches regex",
-    },
-    pathHint: { status: "", header: "content-type", time: "", body: "data.items[0].id" },
-    row: (n) => (n === "new" ? "new row" : `row ${n}`),
-    enable: "Enable",
-    remove: "Remove",
-    help: "Checked after Send and by the collection runner. Body: a path like the response filter (data.items[0].id); empty compares the whole body as text. Expected accepts {{var}}.",
-    pass: "pass",
-    fail: "fail",
-    missing: "missing",
-    errors: {
-      binary: "binary body",
-      notJson: "body is not JSON",
-      truncated: "body cut at 5 MB, JSON is incomplete",
-      badPath: "invalid path",
-      notNumber: "not a number",
-      badRegex: "invalid regex",
-    },
+export const ASSERT_STRINGS: Strings = {
+  label: "Asserts",
+  target: "Alvo",
+  path: "Header / caminho JSON",
+  op: "Operador",
+  expected: "Esperado",
+  targets: { status: "Status", header: "Header", time: "Tempo (ms)", body: "Body" },
+  ops: {
+    equals: "igual a",
+    notEquals: "diferente de",
+    contains: "contém",
+    exists: "existe",
+    lessThan: "menor que",
+    greaterThan: "maior que",
+    matches: "casa a regex",
   },
-  "pt-BR": {
-    label: "Asserts",
-    target: "Alvo",
-    path: "Header / caminho JSON",
-    op: "Operador",
-    expected: "Esperado",
-    targets: { status: "Status", header: "Header", time: "Tempo (ms)", body: "Body" },
-    ops: {
-      equals: "igual a",
-      notEquals: "diferente de",
-      contains: "contém",
-      exists: "existe",
-      lessThan: "menor que",
-      greaterThan: "maior que",
-      matches: "casa a regex",
-    },
-    pathHint: { status: "", header: "content-type", time: "", body: "data.items[0].id" },
-    row: (n) => (n === "new" ? "nova linha" : `linha ${n}`),
-    enable: "Ativar",
-    remove: "Remover",
-    help: "Conferidos depois do Enviar e no runner da coleção. Body: caminho como no filtro da resposta (data.items[0].id); vazio compara o body inteiro como texto. Esperado aceita {{var}}.",
-    pass: "ok",
-    fail: "falhou",
-    missing: "não existe",
-    errors: {
-      binary: "body binário",
-      notJson: "body não é JSON",
-      truncated: "body cortado em 5 MB, JSON incompleto",
-      badPath: "caminho inválido",
-      notNumber: "não é número",
-      badRegex: "regex inválida",
-    },
+  pathHint: { status: "", header: "content-type", time: "", body: "data.items[0].id" },
+  row: (n) => (n === "new" ? "nova linha" : `linha ${n}`),
+  enable: "Ativar",
+  remove: "Remover",
+  help: "Conferidos depois do Enviar e no runner da coleção. Body: caminho como no filtro da resposta (data.items[0].id); vazio compara o body inteiro como texto. Esperado aceita {{var}}.",
+  pass: "ok",
+  fail: "falhou",
+  missing: "não existe",
+  errors: {
+    binary: "body binário",
+    notJson: "body não é JSON",
+    truncated: "body cortado em 5 MB, JSON incompleto",
+    badPath: "caminho inválido",
+    notNumber: "não é número",
+    badRegex: "regex inválida",
   },
 };
 
@@ -122,7 +86,7 @@ export function AssertsEditor(props: {
   onChange: (rows: Assert[]) => void;
   scope?: Scope;
 }) {
-  const t = useStrings(ASSERT_STRINGS);
+  const t = ASSERT_STRINGS;
   const { rows, onChange } = props;
   const all = [...rows, blankAssert];
   const update = (index: number, patch: Partial<Assert>) =>
@@ -237,7 +201,7 @@ export function AssertsEditor(props: {
 
 /** "body data.id igual a 7", no idioma da interface. */
 export function useDescribe() {
-  const t = useStrings(ASSERT_STRINGS);
+  const t = ASSERT_STRINGS;
   return (a: Assert) =>
     [
       t.targets[a.target],
@@ -251,7 +215,7 @@ export function useDescribe() {
 
 /** Um resultado por linha: carimbo, o assert e o valor que veio quando falhou. */
 export function AssertResults({ results }: { results: AssertResult[] }) {
-  const t = useStrings(ASSERT_STRINGS);
+  const t = ASSERT_STRINGS;
   const describe = useDescribe();
   return (
     <ul className="grid gap-1.5 font-mono text-[13px]">

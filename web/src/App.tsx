@@ -54,7 +54,6 @@ import {
   WebhookPanel,
 } from "@/features/webhook/webhook";
 import { api } from "@/lib/api-client";
-import { type Dict, strings, useStrings } from "@/lib/i18n";
 import { focusUrl, mod, modalOpen } from "@/lib/utils";
 
 /** A request ativa, resolvida, como curl na área de transferência. Falha aparece na sidebar.
@@ -71,7 +70,7 @@ const copyCurl = () => {
     );
 };
 
-const PALETTE: Dict<{
+const PALETTE: {
   newWebhook: string;
   listen: string;
   stop: string;
@@ -79,31 +78,20 @@ const PALETTE: Dict<{
   run: (folder: string) => string;
   lastRun: string;
   notSaved: string;
-}> = {
-  en: {
-    newWebhook: "New webhook inspector",
-    listen: "Webhook: listen",
-    stop: "Webhook: stop",
-    copyUrl: "Webhook: copy URL",
-    run: (folder) => `Run requests in ${folder}`,
-    lastRun: "Last run results",
-    notSaved: "The webhook inspector is not saved to the workspace.",
-  },
-  "pt-BR": {
-    newWebhook: "Novo inspetor de webhook",
-    listen: "Webhook: escutar",
-    stop: "Webhook: parar",
-    copyUrl: "Webhook: copiar URL",
-    run: (folder) => `Rodar requests de ${folder}`,
-    lastRun: "Resultado da última execução",
-    notSaved: "O inspetor de webhook não vai para o workspace.",
-  },
+} = {
+  newWebhook: "Novo inspetor de webhook",
+  listen: "Webhook: escutar",
+  stop: "Webhook: parar",
+  copyUrl: "Webhook: copiar URL",
+  run: (folder) => `Rodar requests de ${folder}`,
+  lastRun: "Resultado da última execução",
+  notSaved: "O inspetor de webhook não vai para o workspace.",
 };
 
 // O inspetor de webhook só existe em aba: nada para salvar.
 const save = () =>
   activeTab(useRequest.getState()).kind === "webhook"
-    ? useWorkspace.setState({ notice: strings(PALETTE).notSaved })
+    ? useWorkspace.setState({ notice: PALETTE.notSaved })
     : useWorkspace.setState({ saving: true });
 
 /** Ctrl Tab / Ctrl Shift Tab: próxima / anterior aba, dando a volta. */
@@ -154,7 +142,7 @@ export function App() {
   const realtime = kind !== "http";
   const listening = useRealtime((s) => s.conns[active]?.status === "open");
   const ran = useRunner((s) => s.rows.length > 0);
-  const t = useStrings(PALETTE);
+  const t = PALETTE;
   // Há uma resposta na tela e outra anterior desta aba para comparar.
   const comparable = useRequest((s) => {
     const tab = activeTab(s);

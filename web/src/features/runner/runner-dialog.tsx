@@ -5,10 +5,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { AssertResults } from "@/features/asserts/asserts-ui";
 import { STAMPS } from "@/features/response-viewer/diagnose";
 import { openChannel } from "@/features/sidebar/sidebar";
-import { type Dict, useStrings } from "@/lib/i18n";
 import { type RunRow, useRunner } from "./store";
 
-const RUNNER_STRINGS: Dict<{
+const RUNNER_STRINGS: {
   title: (folder: string) => string;
   description: string;
   noEnv: string;
@@ -22,39 +21,21 @@ const RUNNER_STRINGS: Dict<{
   skipped: string;
   blocked: string;
   open: (name: string) => string;
-}> = {
-  en: {
-    title: (folder) => `Run ${folder}`,
-    description:
-      "Every HTTP request in the folder, in order, with the active environment. Each response becomes {{name.res.…}} for the next ones.",
-    noEnv: "no environment",
-    empty: "No HTTP requests in this folder.",
-    cancel: "Cancel",
-    again: "Run again",
-    progress: (done, total) => `${done}/${total}`,
-    summary: (ok, failed) => `${ok} passed · ${failed} failed`,
-    running: "in flight",
-    pending: "waiting",
-    skipped: "skipped",
-    blocked: "Not sent",
-    open: (name) => `Open ${name}`,
-  },
-  "pt-BR": {
-    title: (folder) => `Rodar ${folder}`,
-    description:
-      "Todas as requests HTTP da pasta, em ordem, com o environment ativo. Cada resposta vira {{nome.res.…}} para as seguintes.",
-    noEnv: "sem environment",
-    empty: "Nenhuma request HTTP nesta pasta.",
-    cancel: "Cancelar",
-    again: "Rodar de novo",
-    progress: (done, total) => `${done}/${total}`,
-    summary: (ok, failed) => `${ok} ok · ${failed} falharam`,
-    running: "em voo",
-    pending: "na fila",
-    skipped: "pulada",
-    blocked: "Não enviada",
-    open: (name) => `Abrir ${name}`,
-  },
+} = {
+  title: (folder) => `Rodar ${folder}`,
+  description:
+    "Todas as requests HTTP da pasta, em ordem, com o environment ativo. Cada resposta vira {{nome.res.…}} para as seguintes.",
+  noEnv: "sem environment",
+  empty: "Nenhuma request HTTP nesta pasta.",
+  cancel: "Cancelar",
+  again: "Rodar de novo",
+  progress: (done, total) => `${done}/${total}`,
+  summary: (ok, failed) => `${ok} ok · ${failed} falharam`,
+  running: "em voo",
+  pending: "na fila",
+  skipped: "pulada",
+  blocked: "Não enviada",
+  open: (name) => `Abrir ${name}`,
 };
 
 // Classe de status = cor da fita, na variante *-text (DESIGN.md › Secondary).
@@ -71,7 +52,7 @@ const button =
 const passed = (row: RunRow) => row.state === "done" && !row.results?.some((r) => !r.pass);
 
 export function RunnerDialog() {
-  const t = useStrings(RUNNER_STRINGS);
+  const t = RUNNER_STRINGS;
   const { folder, env, rows, running, open, run, cancel } = useRunner();
   const finished = rows.filter((r) => r.state === "done" || r.state === "failed").length;
   const ok = rows.filter(passed).length;
@@ -150,7 +131,7 @@ export function RunnerDialog() {
 
 /** Status e asserts (2/3), ou o carimbo da falha, ou o estado na fila. */
 function Outcome({ row }: { row: RunRow }) {
-  const t = useStrings(RUNNER_STRINGS);
+  const t = RUNNER_STRINGS;
   if (row.state === "failed")
     return (
       <span className="label border-2 border-prod-text px-1.5 text-[11px] text-prod-text">

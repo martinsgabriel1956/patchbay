@@ -10,10 +10,9 @@ import { useRealtime } from "@/features/realtime/store";
 import { paramsFromUrl } from "@/features/request-editor/query";
 import { activeTab, fromRequest, useRequest } from "@/features/request-editor/store";
 import { useWorkspace } from "@/features/sidebar/store";
-import { type Dict, strings, useStrings } from "@/lib/i18n";
 import { isMac, modalOpen } from "@/lib/utils";
 
-const WEBHOOK_STRINGS: Dict<{
+const WEBHOOK_STRINGS: {
   port: string;
   portHint: string;
   listen: string;
@@ -36,55 +35,29 @@ const WEBHOOK_STRINGS: Dict<{
   noBody: string;
   truncated: string;
   size: string;
-}> = {
-  en: {
-    port: "Port",
-    portHint: "empty = any free port",
-    listen: "Listen",
-    stop: "Stop",
-    copy: "Copy URL",
-    copied: "Webhook URL copied",
-    status: "Response status",
-    body: "Response body",
-    help: "Listens on 127.0.0.1 only. To receive from outside, point a tunnel (ngrok, cloudflared) at the port. Every request gets the status and body above; the listener stops with the tab or the app.",
-    restart: "Changes apply on the next Listen.",
-    listening: "Listening",
-    connecting: "Starting",
-    stopped: "Stopped",
-    idle: "Start listening and send something to the URL.",
-    details: "Request",
-    close: "Close details",
-    save: "Save as request",
-    headers: "Headers",
-    binary: (bytes) => `Binary body, ${bytes} B. The base64 is in the log.`,
-    noBody: "No body.",
-    truncated: "cut at 5 MB",
-    size: "size",
-  },
-  "pt-BR": {
-    port: "Porta",
-    portHint: "vazio = qualquer porta livre",
-    listen: "Escutar",
-    stop: "Parar",
-    copy: "Copiar URL",
-    copied: "URL do webhook copiada",
-    status: "Status da resposta",
-    body: "Body da resposta",
-    help: "Escuta só em 127.0.0.1. Para receber de fora, aponte um túnel (ngrok, cloudflared) para a porta. Toda request recebe o status e o body acima; o listener para junto com a aba ou o app.",
-    restart: "Mudanças valem no próximo Escutar.",
-    listening: "Escutando",
-    connecting: "Abrindo",
-    stopped: "Parado",
-    idle: "Comece a escutar e mande algo para a URL.",
-    details: "Request",
-    close: "Fechar detalhes",
-    save: "Salvar como request",
-    headers: "Headers",
-    binary: (bytes) => `Body binário, ${bytes} B. O base64 está no log.`,
-    noBody: "Sem body.",
-    truncated: "cortado em 5 MB",
-    size: "tamanho",
-  },
+} = {
+  port: "Porta",
+  portHint: "vazio = qualquer porta livre",
+  listen: "Escutar",
+  stop: "Parar",
+  copy: "Copiar URL",
+  copied: "URL do webhook copiada",
+  status: "Status da resposta",
+  body: "Body da resposta",
+  help: "Escuta só em 127.0.0.1. Para receber de fora, aponte um túnel (ngrok, cloudflared) para a porta. Toda request recebe o status e o body acima; o listener para junto com a aba ou o app.",
+  restart: "Mudanças valem no próximo Escutar.",
+  listening: "Escutando",
+  connecting: "Abrindo",
+  stopped: "Parado",
+  idle: "Comece a escutar e mande algo para a URL.",
+  details: "Request",
+  close: "Fechar detalhes",
+  save: "Salvar como request",
+  headers: "Headers",
+  binary: (bytes) => `Body binário, ${bytes} B. O base64 está no log.`,
+  noBody: "Sem body.",
+  truncated: "cortado em 5 MB",
+  size: "tamanho",
 };
 
 /** Configuração do listener por aba (só em memória; texto como digitado). */
@@ -112,7 +85,7 @@ export function copyWebhookUrl() {
   if (!url) return;
   navigator.clipboard
     .writeText(url)
-    .then(() => useWorkspace.setState({ notice: strings(WEBHOOK_STRINGS).copied }))
+    .then(() => useWorkspace.setState({ notice: WEBHOOK_STRINGS.copied }))
     .catch((err) => useWorkspace.setState({ error: (err as Error).message }));
 }
 
@@ -120,7 +93,7 @@ const action =
   "label h-[34px] shrink-0 border border-mute px-3.5 text-[12px] hover:shadow-[inset_0_-2px_var(--ink)]";
 
 export function WebhookEditor() {
-  const t = useStrings(WEBHOOK_STRINGS);
+  const t = WEBHOOK_STRINGS;
   const key = useRequest((s) => activeTab(s).key);
   const conn = useRealtime((s) => s.conns[key]);
   const config = useConfig((s) => s[key] ?? DEFAULT);
@@ -236,7 +209,7 @@ export function WebhookEditor() {
 }
 
 export function WebhookPanel() {
-  const t = useStrings(WEBHOOK_STRINGS);
+  const t = WEBHOOK_STRINGS;
   const key = useRequest((s) => activeTab(s).key);
   const conn = useRealtime((s) => s.conns[key]);
   const status = conn?.status ?? "closed";
@@ -313,7 +286,7 @@ function pretty(body: string) {
 }
 
 function Details(props: { request: CapturedRequest; port?: number; onClose: () => void }) {
-  const t = useStrings(WEBHOOK_STRINGS);
+  const t = WEBHOOK_STRINGS;
   const r = props.request;
   const body = useMemo(() => (r.isBinary ? null : pretty(r.body)), [r]);
   return (
