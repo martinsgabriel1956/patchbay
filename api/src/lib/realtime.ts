@@ -3,14 +3,21 @@
 // outro. SSE: GET com stream, cada evento vira um "message". Sem reconexão automática.
 // `{ kind: "watch" }` como 1ª mensagem faz da conexão o aviso de mudanças no workspace (watch.ts).
 // Proxy e certificado de cliente (options): o SSE usa os dois; o WS só o certificado.
+// `{ kind: "webhook" }` sobe um listener à parte (webhook.ts) que vive enquanto a conexão viver.
 
 import { request } from "undici";
 import WebSocket, { type RawData } from "ws";
 import { z } from "zod";
-import { type RealtimeEvent, RealtimeStart, type WorkspaceEvent } from "../schemas.js";
+import {
+  type RealtimeEvent,
+  RealtimeStart,
+  WebhookStart,
+  type WorkspaceEvent,
+} from "../schemas.js";
 import { dispatcher, headerPairs, tlsOptions } from "./http.js";
 import { sseParser } from "./sse.js";
 import { watch } from "./watch.js";
+import { webhook } from "./webhook.js";
 
 type Event = RealtimeEvent extends infer E ? (E extends unknown ? Omit<E, "at"> : never) : never;
 type Emit = (event: Event) => void;
@@ -104,6 +111,19 @@ export function relay(client: WebSocket) {
             client.send(JSON.stringify({ type: "changed", paths } satisfies WorkspaceEvent));
         });
         client.on("close", stop);
+        return;
+      }
+      // { kind: "webhook" }: listener próprio; a web só ouve (mensagens seguintes são ignoradas).
+      if (message?.kind === "webhook") {
+        const hook = WebhookStart.safeParse(message);
+        if (!hook.success) return abort(z.prettifyError(hook.error));
+        watching = true;
+        const stop = webhook(hook.data, (event) => {
+          if (client.readyState === WebSocket.OPEN)
+            client.send(JSON.stringify({ ...event, at: new Date().toISOString() }));
+          if (event.type === "close") client.close(1000);
+        });
+        client.on("close", stop); // web fechou (ou caiu): o listener não fica órfão
         return;
       }
       const parsed = RealtimeStart.safeParse(message);

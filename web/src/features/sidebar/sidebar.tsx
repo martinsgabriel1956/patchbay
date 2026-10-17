@@ -15,7 +15,9 @@ import {
   where,
 } from "@/features/request-editor/store";
 import { STAMPS } from "@/features/response-viewer/diagnose";
+import { useRunner } from "@/features/runner/store";
 import { realtime } from "@/lib/api-client";
+import { useStrings } from "@/lib/i18n";
 import { focusUrl, mod, modalOpen } from "@/lib/utils";
 import { ImportDialog } from "./import-dialog";
 import { PathDialog, type PathDialogProps } from "./path-dialog";
@@ -140,6 +142,7 @@ export function Sidebar() {
   const conns = useRealtime((s) => s.conns);
   const live = new Set(tabs.filter((t) => conns[t.key]?.status === "open").map((t) => t.path));
   const [dialog, setDialog] = useState<PathDialogProps | null>(null);
+  const runLabel = useStrings({ en: "Run requests", "pt-BR": "Rodar requests" });
 
   const all = groups(tree, contents);
   const folders = ["", ...all.filter((g) => g.path).map((g) => g.path)];
@@ -325,6 +328,7 @@ export function Sidebar() {
       path.includes("/") ? "Configurar (auth, headers)" : "Configurar (environments, auth…)",
       () => useEnvironments.getState().edit(path),
     ],
+    [runLabel, () => useRunner.getState().run(path)],
     ["Nova request", () => newRequest(path)],
     ["Nova request WebSocket", () => newRequest(path, "ws")],
     ["Nova request SSE", () => newRequest(path, "sse")],

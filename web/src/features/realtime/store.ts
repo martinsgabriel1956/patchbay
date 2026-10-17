@@ -1,11 +1,18 @@
 // Conexões realtime e seus logs, fora dos componentes: sobrevivem a trocar de aba e a esconder a
 // janela (a webview continua viva na tray). Chave = key da aba. Não persiste: recarregar a
 // página derruba as conexões (e a api fecha os upstreams).
-import type { RealtimeEvent, RealtimeRequest } from "@api/schemas";
+import type {
+  CapturedRequest,
+  RealtimeEvent,
+  RealtimeRequest,
+  WebhookEvent,
+  WebhookStart,
+} from "@api/schemas";
 import { create } from "zustand";
 import { requestContext } from "@/features/environments/store";
 import { realtime } from "@/lib/api-client";
 import { setTrayStatus } from "@/lib/desktop";
+import { type Dict, strings } from "@/lib/i18n";
 import { interpolate, prepareRealtime } from "@/lib/interpolate";
 
 /** Uma linha do log. "in"/"out" são mensagens; "event" é open/close/error da conexão. */
@@ -20,6 +27,8 @@ export type Entry = {
   sseId?: string;
   /** Só "event": o tipo, para o carimbo de erro. */
   kind?: "open" | "close" | "error";
+  /** Só webhook: a request recebida inteira (data = body, event = "MÉTODO /caminho"). */
+  request?: CapturedRequest;
 };
 
 export type Connection = {
@@ -28,6 +37,8 @@ export type Connection = {
   /** Do handshake com o upstream. */
   protocol?: string;
   headers?: [string, string][];
+  /** Só webhook: a porta em que o listener está escutando. */
+  port?: number;
 };
 
 type RealtimeStore = {
@@ -35,6 +46,8 @@ type RealtimeStore = {
   /** Mensagem em edição por aba (não vai para o disco). */
   drafts: Record<string, string>;
   connect: (key: string, req: RealtimeRequest, path?: string) => Promise<void>;
+  /** Inspetor de webhooks: sobe um listener na api e loga cada request que chegar. */
+  listen: (key: string, config: Omit<WebhookStart, "kind">) => Promise<void>;
   disconnect: (key: string) => void;
   /** path = arquivo da aba, para achar a coleção das `{{var}}`. */
   send: (key: string, path?: string) => Promise<void>;
@@ -42,6 +55,23 @@ type RealtimeStore = {
   clear: (key: string) => void;
   /** A aba fechou: desconecta e esquece o log. */
   drop: (key: string) => void;
+};
+
+const WEBHOOK_STRINGS: Dict<{
+  starting: string;
+  listening: (url: string) => string;
+  stopped: string;
+}> = {
+  en: {
+    starting: "Starting listener",
+    listening: (url) => `Listening on ${url}`,
+    stopped: "Stopped",
+  },
+  "pt-BR": {
+    starting: "Abrindo listener",
+    listening: (url) => `Escutando em ${url}`,
+    stopped: "Parado",
+  },
 };
 
 // ponytail: log limitado às últimas 1000 linhas por conexão; virtualizar a lista se precisar de mais.
@@ -126,6 +156,48 @@ export const useRealtime = create<RealtimeStore>()((set, get) => {
       } catch (err) {
         add(key, { dir: "event", kind: "error", data: (err as Error).message });
         closed(key, "Desconectado");
+      }
+    },
+
+    listen: async (key, config) => {
+      get().disconnect(key);
+      const t = strings(WEBHOOK_STRINGS);
+      set((s) => ({
+        conns: { ...s.conns, [key]: { status: "connecting", log: s.conns[key]?.log ?? [] } },
+      }));
+      add(key, { dir: "event", kind: "open", data: t.starting });
+      try {
+        const ws = await realtime();
+        if (get().conns[key]?.status !== "connecting") return ws.close();
+        sockets.set(key, ws);
+        ws.onopen = () => ws.send(JSON.stringify({ kind: "webhook", ...config }));
+        ws.onmessage = (e) => {
+          if (sockets.get(key) !== ws) return;
+          const event: WebhookEvent = JSON.parse(e.data);
+          if (event.type === "listening") {
+            const { port } = event.data;
+            patch(key, { status: "open", port });
+            const url = `http://127.0.0.1:${port}`;
+            add(key, { dir: "event", kind: "open", data: t.listening(url), at: event.at });
+          } else if (event.type === "request") {
+            const r = event.data;
+            const head = `${r.method} ${r.url}`;
+            const { at } = event;
+            add(key, { dir: "in", data: r.body, binary: r.isBinary, event: head, request: r, at });
+          } else if (event.type === "error") {
+            add(key, { dir: "event", kind: "error", data: event.data, at: event.at });
+          } else {
+            closed(key, t.stopped, event.at);
+          }
+        };
+        ws.onclose = (e) => {
+          if (sockets.get(key) !== ws) return;
+          sockets.delete(key);
+          closed(key, e.code === 1000 ? t.stopped : `api · ${e.code}`);
+        };
+      } catch (err) {
+        add(key, { dir: "event", kind: "error", data: (err as Error).message });
+        closed(key, t.stopped);
       }
     },
 

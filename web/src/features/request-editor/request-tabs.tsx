@@ -116,7 +116,11 @@ export function RequestTabs() {
                 className={`flex items-center gap-2 py-2 pr-1.5 pl-3.5 outline-offset-[-2px] ${selected ? "max-w-[240px]" : "max-w-[160px]"}`}
               >
                 <span className={`label text-[12px] ${live ? "text-cord-text" : ""}`}>
-                  {tab.kind === "http" ? tab.method : tab.kind.toUpperCase()}
+                  {tab.kind === "http"
+                    ? tab.method
+                    : tab.kind === "webhook"
+                      ? "HOOK"
+                      : tab.kind.toUpperCase()}
                 </span>
                 <span className="truncate text-[13px]">
                   {name}

@@ -108,6 +108,41 @@ describe("guardas da api", () => {
     expect(await upgrade(["patchbay", tokenProtocol], { origin: "https://evil.com" })).toBe(403);
     expect(await upgrade(["patchbay", tokenProtocol], { host: "evil.com" })).toBe(403);
   });
+
+  it("listener de webhook: só abre com token e não expõe as rotas da api", async () => {
+    const url = `ws://127.0.0.1:${api.port}/realtime`;
+    const origin = "tauri://localhost";
+    // Sem token, o upgrade nem acontece: não dá para subir um listener.
+    const denied = await new Promise<number>((resolve) => {
+      new WebSocket(url, ["patchbay"], { headers: { origin } }).on(
+        "unexpected-response",
+        (_req, res) => resolve(res.statusCode ?? 0),
+      );
+    });
+    expect(denied).toBe(401);
+
+    const ws = new WebSocket(url, ["patchbay", `patchbay.token.${api.token}`], {
+      headers: { origin },
+    });
+    await once(ws, "open");
+    ws.send(JSON.stringify({ kind: "webhook", status: 204 }));
+    const [message] = await once(ws, "message");
+    const port: number = JSON.parse(message.toString()).data.port;
+    expect(port).not.toBe(api.port);
+
+    // Mesmo com o token certo, /health, /files e /send do listener só respondem o configurado.
+    const ok = { host: `127.0.0.1:${port}`, "x-session-token": api.token };
+    for (const [path, method] of [
+      ["/health", "GET"],
+      ["/files/tree", "GET"],
+      ["/send", "POST"],
+    ]) {
+      const res = await get(port, path, ok, method);
+      expect(res.status).toBe(204);
+      expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+    }
+    ws.close();
+  });
 });
 
 it("sai quando o stdin fecha", async () => {
